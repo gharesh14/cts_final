@@ -268,8 +268,12 @@ async function loadAppealedRequests() {
             throw new Error('Failed to fetch appealed requests');
         }
         const data = await response.json();
-        updateAppealedRequestsStats(data.appeals || []);
-        loadAppealsTable(data.appeals || []);
+
+        // Check if the data is an object with an 'appeals' key, or if it's the array itself.
+        const appealsData = data.appeals || data;
+
+        updateAppealedRequestsStats(appealsData);
+        loadAppealsTable(appealsData);
     } catch (error) {
         console.error('Error fetching appealed requests:', error);
         showNotification('Failed to load appealed requests data. Please try again later.', 'error');
@@ -308,6 +312,80 @@ function loadAppealsTable(appeals) {
 }
 
 // Create appeal table row for admin dashboard
+// function createAppealRow(appeal) {
+//     const row = document.createElement('tr');
+
+//     const appealStatus = appeal.appeal_status || 'Submitted';
+//     const appealOutcome = appeal.appeal_outcome || 'Pending';
+
+//     // Determine status styling
+//     let statusClass = 'status-pending';
+//     let statusText = appealStatus;
+    
+//     if (appealOutcome === 'Approved') {
+//         statusClass = 'status-approved';
+//         statusText = 'Approved';
+//     } else if (appealOutcome === 'Denied') {
+//         statusClass = 'status-denied';
+//         statusText = 'Denied';
+//     } else if (appealStatus === 'Under Review') {
+//         statusClass = 'status-reviewing';
+//         statusText = 'Under Review';
+//     }
+
+//     row.innerHTML = `
+//         <td><strong>${appeal.appeal_id}</strong></td>
+//         <td><strong>${appeal.request_id}</strong></td>
+//         <td>
+//             <div class="patient-info">
+//                 <strong>${appeal.patient_id}</strong><br>
+//                 <small>${appeal.patient_name}</small>
+//             </div>
+//         </td>
+//         <td>
+//             <div class="service-info">
+//                 <strong>${appeal.service_name}</strong><br>
+//                 <small>${appeal.service_type}</small>
+//             </div>
+//         </td>
+//         <td>${appeal.originalStatus}</td>
+//         <td>
+//             <span class="confidence-score">${appeal.appealLevelPercentage}</span>
+//         </td>
+//         <td>
+//             <div class="appeal-reason">${appeal.appeal_reason ? appeal.appeal_reason.substring(0, 50) + '...' : 'No reason provided'}</div>
+//         </td>
+//         <td>
+//             <div class="documentation-info">
+//                 ${appeal.appeal_documents ? '📄 Documents provided' : 'No documents'}
+//             </div>
+//         </td>
+//         <td>
+//             <span class="status-chip ${statusClass}">${statusText}</span>
+//         </td>
+//         <td>
+//             <div class="action-buttons">
+//                 ${appealOutcome === 'Pending' ? `
+//                     <button class="action-btn approve-btn" onclick="approveAppeal('${appeal.appeal_id}')" title="Approve this appeal">
+//                         <i class="fas fa-check"></i> Approve
+//                     </button>
+//                     <button class="action-btn deny-btn" onclick="denyAppeal('${appeal.appeal_id}')" title="Deny this appeal">
+//                         <i class="fas fa-times"></i> Deny
+//                     </button>
+//                 ` : `
+//                     <button class="action-btn view-btn" onclick="viewAppealDetails('${appeal.appeal_id}')" title="View appeal details">
+//                         <i class="fas fa-eye"></i> View
+//                     </button>
+//                 `}
+//             </div>
+//         </td>
+//     `;
+
+//     return row;
+// }
+
+// Create appeal table row for admin dashboard
+// Create appeal table row for admin dashboard
 function createAppealRow(appeal) {
     const row = document.createElement('tr');
 
@@ -317,7 +395,7 @@ function createAppealRow(appeal) {
     // Determine status styling
     let statusClass = 'status-pending';
     let statusText = appealStatus;
-    
+
     if (appealOutcome === 'Approved') {
         statusClass = 'status-approved';
         statusText = 'Approved';
@@ -334,8 +412,8 @@ function createAppealRow(appeal) {
         <td><strong>${appeal.request_id}</strong></td>
         <td>
             <div class="patient-info">
-                <strong>${appeal.patient_id}</strong><br>
-                <small>${appeal.patient_name}</small>
+                <strong>${appeal.patient_name}</strong><br>
+                <small>ID: ${appeal.patient_id}</small>
             </div>
         </td>
         <td>
@@ -344,7 +422,7 @@ function createAppealRow(appeal) {
                 <small>${appeal.service_type}</small>
             </div>
         </td>
-        <td>${appeal.originalStatus}</td>
+        <td><span class="status-chip status-denied">${appeal.originalStatus}</span></td>
         <td>
             <span class="confidence-score">${appeal.appealLevelPercentage}</span>
         </td>
@@ -379,7 +457,6 @@ function createAppealRow(appeal) {
 
     return row;
 }
-
 // Approve an appeal
 async function approveAppeal(appealId) {
     const adminNotes = prompt('Please provide admin notes for this approval (optional):');
