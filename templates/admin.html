@@ -114,31 +114,68 @@
         </div>
 
         <!-- Appeals Management Tab -->
-        <div id="appeals" class="tab-content">
-            <div class="content-header">
-                <h2><i class="fas fa-gavel"></i> Appeals Management</h2>
-                <p>Review and process appeal requests with AI-powered risk prediction</p>
-            </div>
-            
-            <div class="table-container">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Appeal ID</th>
-                            <th>Request ID</th>
-                            <th>Patient</th>
-                            <th>Service</th>
-                            <th>Original Status</th>
-                            <th>Appeal Risk</th>
-                            <th>Doctor's Statement</th>
-                        </tr>
-                    </thead>
-                    <tbody id="appeals-tbody">
-                        <!-- Appeals will be populated by JavaScript -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
+<div id="appeals" class="tab-content">
+    <div class="content-header">
+        <h2><i class="fas fa-gavel"></i> Appeals Management</h2>
+        <p>Review and process appeal requests with AI-powered risk prediction</p>
+    </div>
+    
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Appeal ID</th>
+                    <th>Request ID</th>
+                    <th>Patient</th>
+                    <th>Service</th>
+                    <th>Original Status</th>
+                    <th>Appeal Risk</th>
+                    <th>Doctor's Statement</th>
+                </tr>
+            </thead>
+            <tbody id="appeals-tbody">
+                <!-- Appeals will be populated by JavaScript -->
+            </tbody>
+        </table>
+    </div>
+</div>
+<script>
+async function loadAppeals() {
+    try {
+        const response = await fetch('/api/admin-appeals');
+        if (!response.ok) throw new Error('Network response was not ok');
+        const data = await response.json();
+
+        const tbody = document.getElementById('appeals-tbody');
+        tbody.innerHTML = "";
+
+        // Make sure we're looping over "data.appeals"
+        if (data.appeals && Array.isArray(data.appeals)) {
+            data.appeals.forEach(ap => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${ap.appeal_id}</td>
+                    <td>${ap.request_id || '-'}</td>
+                    <td>${ap.patient_name}</td>
+                    <td>${ap.service_name}</td>
+                    <td>${ap.originalStatus}</td>
+                    <td>${ap.appealLevelPercentage}</td>
+                    <td>${ap.appeal_reason || '-'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+    } catch (err) {
+        console.error("Failed to load appeals:", err);
+    }
+}
+
+// Load immediately when page opens
+document.addEventListener("DOMContentLoaded", loadAppeals);
+</script>
+
+
+
 
         
 
@@ -275,6 +312,7 @@
 
    <div id="notification-container"></div>
    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+   
    <script>
         (function(){
             try {
