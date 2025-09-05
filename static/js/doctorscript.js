@@ -565,15 +565,6 @@ function createRequestRow(request) {
             ${request.appealRisk ? `<span class="risk-chip">${request.appealRisk}</span>` : '<span class="text-muted">N/A</span>'}
         </td>
         <td>${request.ruleReason ? `${request.ruleReason}` : '<span class="text-muted">N/A</span>'}</td>
-        <td>
-            <div class="action-buttons">
-                ${statusText === 'Needs Docs' ?
-            `<button class="action-btn upload-docs-btn" onclick="openUploadModal('${itemId}')">
-                        <i class="fas fa-upload"></i> Upload Docs
-                    </button>` : ''}
-                ${statusText === 'Denied' ? getAppealActionHtml({ ...request, itemId }) : ''}
-            </div>
-        </td>
     `;
 
     return row;

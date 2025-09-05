@@ -89,7 +89,7 @@ except Exception as e:
 
 # Schema-based predictors are no longer used; unified models above cover all service types.
 
-app = Flask(_name_)
+app = Flask(__name__)
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
@@ -220,7 +220,7 @@ except Exception as _e:
 # Database Models
 # ------------------------------
 class Patient(db.Model):
-    _tablename_ = 'patient'
+    __tablename__ = 'patient'
     patient_id = db.Column(db.String(50), primary_key=True)
     age = db.Column(db.Integer)
     gender = db.Column(db.String(10))
@@ -235,7 +235,7 @@ class Patient(db.Model):
 
 
 class Request(db.Model):
-    _tablename_ = 'request'
+    __tablename__ = 'request'
     request_id = db.Column(db.String(50), primary_key=True)
     patient_id = db.Column(db.String(50), db.ForeignKey('patient.patient_id'))
     diagnosis = db.Column(db.String(255))
@@ -252,7 +252,7 @@ class Request(db.Model):
 
 
 class ServiceRequested(db.Model):
-    _tablename_ = 'service_requested'
+    __tablename__ = 'service_requested'
     item_id = db.Column(db.String(50), primary_key=True)
     request_id = db.Column(db.String(50), db.ForeignKey('request.request_id'))
     service_type = db.Column(db.String(50))
@@ -276,7 +276,7 @@ class ServiceRequested(db.Model):
 
 
 class Appeal(db.Model):
-    _tablename_ = 'appeal'
+    __tablename__ = 'appeal'
     appeal_id = db.Column(db.String(50), primary_key=True)
     item_id = db.Column(db.String(50), db.ForeignKey('service_requested.item_id'))
     appeal_outcome = db.Column(db.String(50), default="Pending")  # Pending, Approved, Denied
@@ -293,7 +293,7 @@ class Appeal(db.Model):
 
 # Per requirement: normalized appeals table to track auto-created appeals on denial
 class Appeals(db.Model):
-    _tablename_ = 'appeals'
+    __tablename__ = 'appeals'
     id = db.Column(db.String(50), primary_key=True)
     request_id = db.Column(db.String(50), db.ForeignKey('request.request_id'))
     doctor_id = db.Column(db.Integer, nullable=True)  # Not linked today; reserved for future
@@ -304,7 +304,7 @@ class Appeals(db.Model):
 
 
 class Documentation(db.Model):
-    _tablename_ = 'documentation'
+    __tablename__ = 'documentation'
     doc_id = db.Column(db.String(50), primary_key=True)
     item_id = db.Column(db.String(50), db.ForeignKey('service_requested.item_id'))
     file_path = db.Column(db.String(255))
@@ -315,7 +315,7 @@ class Documentation(db.Model):
 
 
 class User(db.Model):
-    _tablename_ = "user"
+    __tablename__ = "user"
 
     id = db.Column(db.Integer, db.Sequence('user_id_seq'), primary_key=True)
     username = db.Column(db.String(50), nullable=False)
@@ -372,7 +372,7 @@ def predict_appeal_risk(service: dict, patient: dict, request: dict) -> tuple[bo
         features_scaled = [aligned_features]
 
         # Make prediction using the appropriate model
-        print(f"Making prediction with {type(model)._name_} model")
+        print(f"Making prediction with {type(model).__name__} model")
         
         # Prefer predict_proba if available
         if hasattr(model, 'predict_proba'):
@@ -380,7 +380,7 @@ def predict_appeal_risk(service: dict, patient: dict, request: dict) -> tuple[bo
             should_appeal = model.predict(features_scaled)[0] == 1
             confidence = prediction_proba[1] if should_appeal else prediction_proba[0]
         else:
-            print(f"Model {type(model)._name_} has no predict_proba; using predict only")
+            print(f"Model {type(model).__name__} has no predict_proba; using predict only")
             prediction = model.predict(features_scaled)[0]
             should_appeal = bool(int(prediction) == 1)
             confidence = 0.7 if should_appeal else 0.3
@@ -770,7 +770,7 @@ def extract_json_from_llm(response) -> dict:
     Safely extract JSON from a Gemini LLM response.
     Handles:
       - Empty or missing .text
-      - Markdown code fences (json ... )
+      - Markdown code fences (```json ... ```)
       - Partial / malformed responses
     Returns an empty dict if parsing fails.
     """
@@ -784,8 +784,8 @@ def extract_json_from_llm(response) -> dict:
         return {}
 
     # Remove markdown code fences
-    cleaned = re.sub(r"^(?:json)?", "", text.strip(), flags=re.IGNORECASE | re.MULTILINE)
-    cleaned = re.sub(r"$", "", cleaned.strip(), flags=re.MULTILINE).strip()
+    cleaned = re.sub(r"^```(?:json)?", "", text.strip(), flags=re.IGNORECASE | re.MULTILINE)
+    cleaned = re.sub(r"```$", "", cleaned.strip(), flags=re.MULTILINE).strip()
 
     try:
         return json.loads(cleaned)
@@ -800,7 +800,7 @@ def run_rules_engine(service: dict, patient: dict, request: dict = None) -> tupl
     Only return Approved or Denied.
     """
     if not (LLM_PROVIDER == "gemini" and genai and GEMINI_API_KEY):
-        print("⚠ LLM not configured, falling back to local rule engine")
+        print("⚠️ LLM not configured, falling back to local rule engine")
         return run_local_rules_engine(service, patient, request)
 
     try:
@@ -831,7 +831,7 @@ def run_rules_engine(service: dict, patient: dict, request: dict = None) -> tupl
         print(f"✅ LLM Rule Engine Decision: {decision} (Rule: {rule_id}) - {reason}")
         return decision, reason
     except Exception as e:
-        print(f"⚠ LLM rules error: {e}")
+        print(f"⚠️ LLM rules error: {e}")
         # Fallback to local rule engine
         return run_local_rules_engine(service, patient, request)
 
@@ -1545,3 +1545,1706 @@ def create_request():
 
             # Align persisted flag to threshold-based decision per requirement
             appeal_allowed = level_pct >= 60.0
+
+            service.appeal_recommended = appeal_allowed
+            service.appeal_confidence = confidence
+            service.appeal_risk = risk_level
+
+            print(
+                f"ML Appeal Prediction for {item_id}: Appeal={should_appeal}, Confidence={confidence:.2f}, Risk={risk_level}")
+
+            # NEW: Create an appeal entry in normalized appeals table with level percentage
+            try:
+                new_appeal_id = f"AP{uuid.uuid4().hex[:10].upper()}"
+                appeals_row = Appeals(
+                    id=new_appeal_id,
+                    request_id=request_id,
+                    doctor_id=None,  # No doctor linkage available in current schema
+                    patient_id=pid,
+                    appeal_level=level_pct,
+                )
+                db.session.add(appeals_row)
+                print(
+                    f"Auto-created appeal {new_appeal_id} with predicted level {level_pct:.2f}% for request {request_id}")
+            except Exception as _e:
+                print(f"Failed to auto-create appeal row: {_e}")
+        else:
+            # Clear appeal fields for non-denied requests
+            service.appeal_recommended = False
+            service.appeal_confidence = None
+            service.appeal_risk = None
+
+        db.session.add(service)
+        db.session.commit()
+
+        # Emit real-time event to dashboards (fixed patient/diagnosis fields)
+        risk_level = "low"
+        if (patient.risk_score or 0) > 0.7:
+            risk_level = "high"
+        elif (patient.risk_score or 0) > 0.4:
+            risk_level = "medium"
+
+        socketio.emit('new_request', {
+            "id": service.item_id,
+            "patientId": patient_data.get("patient_id"),
+            "service": service.service_name,
+            "serviceType": service.service_type,
+            "diagnosisCode": request_data.get("diagnosis"),
+            "status": service.approval_status,
+            "ruleReason": service.rule_reason,
+            "appealRisk": service.appeal_risk,
+            "appealRecommended": service.appeal_recommended,
+            "appealConfidence": service.appeal_confidence,
+            "estimatedCost": f"${(service.estimated_cost or 0):,.2f}",
+            "riskScore": patient.risk_score,
+            "riskLevel": risk_level,
+            "submittedBy": "Dr. Sarah Johnson"  # Default doctor name
+        })
+
+        # Build appeal decision payload (only on Denied)
+        response_payload = {
+            "request_id": req.request_id,
+            "item_id": service.item_id,
+            "approval_status": status,
+            "reason": reason
+        }
+
+        if status == "Denied":
+            # Reconstruct feature dicts for consistent scoring
+            request_dict_for_score = {
+                "prior_denials": req.prior_denials,
+                "deductible": req.deductible,
+                "coinsurance": req.coinsurance,
+            }
+            level_pct_resp = predict_appeal_level(service_dict, patient_dict, request_dict_for_score)
+            appeal_allowed_resp = level_pct_resp >= 60.0
+            response_payload["appeal_decision"] = {
+                "appeal_allowed": bool(appeal_allowed_resp),
+                "score": float(round(level_pct_resp, 2)),
+                "message": "Doctor can appeal this request." if appeal_allowed_resp else "Doctor cannot appeal this request. Reason: Low predicted chance of success."
+            }
+
+        return jsonify(response_payload), 200
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error creating request: {str(e)}")
+        return jsonify({"error": "Failed to create request"}), 500
+
+
+@app.route("/eligibility-check", methods=["POST"])
+def eligibility_check():
+    """
+    Re-evaluate a given item_id using the rule engine.
+    """
+    data = request.get_json()
+    item_id = data.get("item_id")
+    service = db.session.get(ServiceRequested, item_id)
+
+    if not service:
+        return jsonify({"error": "Invalid item_id"}), 404
+
+    request_obj = db.session.get(Request, service.request_id)
+    patient = db.session.get(Patient, request_obj.patient_id)
+
+    patient_dict = {
+        "age": patient.age,
+        "gender": patient.gender,
+        "state": patient.state,
+        "risk_score": patient.risk_score
+    }
+    service_dict = {
+        "service_type": service.service_type,
+        "service_name": service.service_name,
+        "service_code": service.service_code,
+        "tier": service.tier,
+        "requires_pa": service.requires_pa,
+        "is_high_cost": service.is_high_cost,
+        "step_therapy": service.step_therapy
+    }
+
+    request_dict = {
+        "diagnosis": request_obj.diagnosis,
+        "diagnosis_category": request_obj.diagnosis_category,
+        "plan_type": request_obj.plan_type,
+        "deductible": request_obj.deductible,
+        "coinsurance": request_obj.coinsurance,
+        "out_of_pocket_max": request_obj.out_of_pocket_max,
+        "member_months": request_obj.member_months,
+        "prior_denials": request_obj.prior_denials,
+    }
+    
+    status, reason = run_rules_engine(service_dict, patient_dict, request_dict)
+    service.approval_status = status
+    db.session.commit()
+
+    socketio.emit('request_updated', {"id": service.item_id, "status": status})
+
+    return jsonify({
+        "item_id": item_id,
+        "approval_status": status,
+        "notes": reason
+    })
+
+
+@app.route("/api/requests", methods=["GET"])
+def get_all_requests():
+    """
+    Admin dashboard uses this to list all requests.
+    Doctor dashboard can also filter by patient or submitted_by on the client.
+    """
+    try:
+        # FIXED: Order by timestamp DESC to show newest requests first
+        services = ServiceRequested.query.join(Request).order_by(Request.timestamp.desc()).all()
+        requests_list = []
+        for service in services:
+            req = db.session.get(Request, service.request_id)
+            if not req:
+                continue
+            patient = db.session.get(Patient, req.patient_id)
+            risk_score = patient.risk_score if patient else 0.5
+            risk_level = "low"
+            if risk_score > 0.7:
+                risk_level = "high"
+            elif risk_score > 0.4:
+                risk_level = "medium"
+
+            requests_list.append({
+                "id": service.item_id,
+                "requestId": req.request_id,
+                "patientId": req.patient_id,
+                "service": service.service_name,
+                "serviceType": service.service_type,
+                "diagnosisCode": req.diagnosis,
+                "status": service.approval_status,
+                "appealRisk": service.appeal_risk,
+                "appealRecommended": service.appeal_recommended,
+                "appealConfidence": service.appeal_confidence,
+                "estimatedCost": f"${(service.estimated_cost or 0):,.2f}",
+                "riskScore": risk_score,
+                "riskLevel": risk_level,
+                "submittedBy": "Dr. Sarah Johnson"  # Default doctor name
+            })
+
+        return jsonify({"requests": requests_list})
+    except Exception as e:
+        print(f"Error fetching requests: {str(e)}")
+        return jsonify({"error": "Failed to fetch requests"}), 500
+
+
+@app.route("/api/request-data", methods=["GET"])
+def get_request_data():
+    """
+    Admin portal uses this to list all request data from the Request table.
+    """
+    try:
+        # FIXED: Order by timestamp DESC to show newest requests first
+        requests = Request.query.order_by(Request.timestamp.desc()).all()
+        requests_list = []
+        for req in requests:
+            patient = db.session.get(Patient, req.patient_id)
+            if not patient:
+                continue
+                
+            # Get associated services for this request
+            services = ServiceRequested.query.filter_by(request_id=req.request_id).all()
+            
+            # Calculate total estimated cost
+            total_cost = sum(service.estimated_cost or 0 for service in services)
+            
+            # Get approval status summary
+            status_counts = {"Approved": 0, "Denied": 0, "Needs Docs": 0}
+            for service in services:
+                if service.approval_status in status_counts:
+                    status_counts[service.approval_status] += 1
+            
+            # Determine overall status
+            overall_status = "Needs Docs"
+            if status_counts["Denied"] > 0:
+                overall_status = "Denied"
+            elif status_counts["Approved"] == len(services) and len(services) > 0:
+                overall_status = "Approved"
+            elif status_counts["Needs Docs"] > 0:
+                overall_status = "Needs Docs"
+            
+            # Get the first service's item_id for appeal purposes
+            first_service = services[0] if services else None
+            item_id = first_service.item_id if first_service else None
+            
+            requests_list.append({
+                "requestId": req.request_id,
+                "itemId": item_id,  # Add item_id for appeal submission
+                "patientId": req.patient_id,
+                "patientName": patient.patient_name or "Unknown",
+                "patientAge": patient.age,
+                "patientGender": patient.gender,
+                "patientState": patient.state,
+                "diagnosis": req.diagnosis,
+                "diagnosisCategory": req.diagnosis_category,
+                "planType": req.plan_type,
+                "deductible": f"${req.deductible:,.2f}" if req.deductible else "N/A",
+                "coinsurance": f"{req.coinsurance:.1f}%" if req.coinsurance else "N/A",
+                "outOfPocketMax": f"${req.out_of_pocket_max:,.2f}" if req.out_of_pocket_max else "N/A",
+                "memberMonths": req.member_months,
+                "priorDenials": req.prior_denials,
+                "timestamp": req.timestamp.strftime("%Y-%m-%d %H:%M") if req.timestamp else "N/A",
+                "overallStatus": overall_status,
+                "totalServices": len(services),
+                "totalEstimatedCost": f"${total_cost:,.2f}",
+                "statusBreakdown": status_counts,
+                "riskScore": patient.risk_score or 0.0,
+                "riskLevel": "high" if (patient.risk_score or 0) > 0.7 else "medium" if (
+                                                                                                    patient.risk_score or 0) > 0.4 else "low"
+            })
+
+        return jsonify({"requests": requests_list})
+    except Exception as e:
+        print(f"Error fetching request data: {str(e)}")
+        return jsonify({"error": "Failed to fetch request data"}), 500
+
+
+@app.route("/api/doctor-requests", methods=["GET"])
+def get_doctor_requests():
+    """
+    Doctor dashboard uses this to list requests submitted by the doctor.
+    """
+    try:
+        # FIXED: Order by timestamp DESC to show newest requests first
+        # For now, we'll return all requests since we don't have a doctor_id field
+        # In a real implementation, you'd filter by the logged-in doctor's ID
+        requests = Request.query.order_by(Request.timestamp.desc()).all()
+        requests_list = []
+        for req in requests:
+            patient = db.session.get(Patient, req.patient_id)
+            if not patient:
+                continue
+                
+            # Get associated services for this request
+            services = ServiceRequested.query.filter_by(request_id=req.request_id).all()
+            
+            # Calculate total estimated cost
+            total_cost = sum(service.estimated_cost or 0 for service in services)
+            
+            # Get approval status summary
+            status_counts = {"Approved": 0, "Denied": 0, "Needs Docs": 0}
+            for service in services:
+                if service.approval_status in status_counts:
+                    status_counts[service.approval_status] += 1
+            
+            # Determine overall status
+            overall_status = "Needs Docs"
+            if status_counts["Denied"] > 0:
+                overall_status = "Denied"
+            elif status_counts["Approved"] == len(services) and len(services) > 0:
+                overall_status = "Approved"
+            elif status_counts["Needs Docs"] > 0:
+                overall_status = "Needs Docs"
+            
+            # Get the first service's item_id for appeal purposes and rule reason
+            first_service = services[0] if services else None
+            item_id = first_service.item_id if first_service else None
+            
+            # Get rule reason from the first service (or combine if multiple services)
+            rule_reason = None
+            if first_service:
+                rule_reason = first_service.rule_reason
+            elif len(services) > 1:
+                # If multiple services, combine reasons
+                reasons = [s.rule_reason for s in services if s.rule_reason]
+                if reasons:
+                    rule_reason = "; ".join(reasons[:2])  # Show first 2 reasons
+            else:
+                rule_reason = "No rule reason available"
+            
+            # Appeal prediction fields (from stored service row)
+            appeal_conf = None
+            appeal_risk = None
+            appeal_level = None
+            appeal_allowed = None
+            if first_service and overall_status == "Denied":
+                try:
+                    if first_service.appeal_confidence is not None:
+                        appeal_conf = float(first_service.appeal_confidence)
+                        appeal_level = int(round(appeal_conf * 100))
+                        appeal_allowed = appeal_level > 80
+                    if first_service.appeal_risk:
+                        appeal_risk = first_service.appeal_risk
+                except Exception:
+                    pass
+
+            requests_list.append({
+                "requestId": req.request_id,
+                "itemId": item_id,  # Add item_id for appeal submission
+                "patientId": req.patient_id,
+                "patientName": patient.patient_name or "Unknown",
+                "patientAge": patient.age,
+                "patientGender": patient.gender,
+                "diagnosis": req.diagnosis,
+                "diagnosisCategory": req.diagnosis_category,
+                "planType": req.plan_type,
+                "deductible": f"${req.deductible:,.2f}" if req.deductible else "N/A",
+                "coinsurance": f"{req.coinsurance:.1f}%" if req.coinsurance else "N/A",
+                "outOfPocketMax": f"${req.out_of_pocket_max:,.2f}" if req.out_of_pocket_max else "N/A",
+                "memberMonths": req.member_months,
+                "priorDenials": req.prior_denials,
+                "timestamp": req.timestamp.strftime("%Y-%m-%d %H:%M") if req.timestamp else "N/A",
+                "overallStatus": overall_status,
+                "totalServices": len(services),
+                "totalEstimatedCost": f"${total_cost:,.2f}",
+                "statusBreakdown": status_counts,
+                "riskScore": patient.risk_score or 0.0,
+                "riskLevel": "high" if (patient.risk_score or 0) > 0.7 else "medium" if ((patient.risk_score or 0) > 0.4) else "low",
+                "ruleReason": rule_reason,  # Add rule reason to response
+                # Appeal fields for UI logic
+                "appealConfidence": appeal_conf,
+                "appealRisk": appeal_risk,
+                "appeal_level": appeal_level,
+                "appeal_allowed": appeal_allowed
+            })
+
+        return jsonify({"requests": requests_list})
+    except Exception as e:
+        print(f"Error fetching doctor requests: {str(e)}")
+        return jsonify({"error": "Failed to fetch doctor requests"}), 500
+
+
+@app.route("/api/appeals", methods=["GET"])
+def get_all_appeals():
+    try:
+        appeals = Appeals.query.order_by(Appeals.created_at.desc()).all()
+        results = []
+        for a in appeals:
+            req = db.session.get(Request, a.request_id)
+            if not req:
+                continue
+            # Find any one service row to show context (first service for request)
+            sreq = ServiceRequested.query.filter_by(request_id=a.request_id).first()
+            results.append({
+                "id": a.id,
+                "requestId": a.request_id,
+                "patientId": a.patient_id,
+                "service": sreq.service_name if sreq else 'N/A',
+                "originalStatus": sreq.approval_status if sreq else 'N/A',
+                "appealLevelPercentage": f"{(a.appeal_level or 0):.1f}%",
+                "createdAt": a.created_at.strftime("%Y-%m-%d %H:%M") if a.created_at else "N/A"
+            })
+        return jsonify({"appeals": results})
+    except Exception as e:
+        print(f"Error fetching appeals: {str(e)}")
+        return jsonify({"error": "Failed to fetch appeals"}), 500
+
+
+@app.route("/api/documentation", methods=["GET"])
+def get_all_documentation():
+    try:
+        # FIXED: Order by timestamp DESC to show newest documents first
+        docs = Documentation.query.order_by(Documentation.timestamp.desc()).all()
+        docs_list = []
+        for doc in docs:
+            sreq = db.session.get(ServiceRequested, doc.item_id)
+            if not sreq:
+                continue
+            req = db.session.get(Request, sreq.request_id)
+            patient = db.session.get(Patient, req.patient_id) if req else None
+            
+            docs_list.append({
+                "id": doc.doc_id,
+                "requestId": sreq.request_id,
+                "patientId": req.patient_id if req else 'N/A',
+                "patientName": patient.patient_name if patient else 'N/A',
+                "fileName": os.path.basename(doc.file_path),
+                "originalFileName": os.path.basename(doc.file_path).split('_', 1)[-1] if '_' in os.path.basename(
+                    doc.file_path) else os.path.basename(doc.file_path),
+                "uploadTimestamp": doc.timestamp.strftime("%Y-%m-%d %H:%M") if doc.timestamp else "N/A",
+                "status": doc.status or "Pending Review"
+            })
+        return jsonify({"documentation": docs_list})
+    except Exception as e:
+        print(f"Error fetching documentation: {str(e)}")
+        return jsonify({"error": "Failed to fetch documentation"}), 500
+
+
+@app.route("/api/requests/<item_id>", methods=["PUT"])
+def update_request_status(item_id):
+    """
+    Admin can override status (Approve/Deny/Needs Docs).
+    """
+    try:
+        data = request.get_json()
+        new_status = (data.get("status") or "").title().strip()
+        admin_notes = data.get("notes", "")
+        
+        if new_status not in {"Approved", "Denied", "Needs Docs"}:
+            return jsonify({"error": "Status must be Approved, Denied, or Needs Docs"}), 400
+
+        service_request = ServiceRequested.query.filter_by(item_id=item_id).first()
+        if not service_request:
+            return jsonify({"error": "Request not found"}), 404
+
+        # Store the previous status for audit
+        previous_status = service_request.approval_status
+        
+        # Update the status
+        service_request.approval_status = new_status
+        
+        # If admin is requesting docs, set status to "Needs Docs"
+        if new_status == "Needs Docs":
+            service_request.approval_status = "Needs Docs"
+        
+        db.session.commit()
+
+        # Emit real-time update to doctor dashboard
+        socketio.emit('request_updated', {
+            "id": item_id, 
+            "status": service_request.approval_status,
+            "admin_notes": admin_notes
+        })
+        
+        # Log the admin decision
+        print(f"Admin decision: Request {item_id} changed from {previous_status} to {service_request.approval_status}")
+        
+        return jsonify({
+            "status": "updated", 
+            "new_status": service_request.approval_status,
+            "admin_notes": admin_notes
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating request status: {str(e)}")
+        return jsonify({"error": "Failed to update request status"}), 500
+
+
+@app.route("/api/appeals/<appeal_id>", methods=["PUT"])
+def update_appeal_decision(appeal_id):
+    try:
+        data = request.get_json()
+        new_decision = data.get("decision")
+
+        appeal_to_update = Appeal.query.filter_by(appeal_id=appeal_id).first()
+        if not appeal_to_update:
+            return jsonify({"error": "Appeal not found"}), 404
+
+        appeal_to_update.appeal_outcome = new_decision
+        db.session.commit()
+
+        return jsonify({"status": "updated", "new_decision": new_decision})
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating appeal: {str(e)}")
+        return jsonify({"error": "Failed to update appeal"}), 500
+
+
+@app.route("/api/documentation/<doc_id>/sufficient", methods=["PUT"])
+def mark_doc_sufficient(doc_id):
+    try:
+        doc_to_update = Documentation.query.filter_by(doc_id=doc_id).first()
+        if not doc_to_update:
+            return jsonify({"error": "Document not found"}), 404
+
+        doc_to_update.status = 'Sufficient'
+        db.session.commit()
+
+        return jsonify({"status": "updated", "doc_status": 'Sufficient'})
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating document: {str(e)}")
+        return jsonify({"error": "Failed to update document"}), 500
+
+
+@app.route("/eligibility-docs", methods=["POST"])
+def upload_docs():
+    try:
+        item_id = request.form.get("item_id")
+        if not item_id:
+            return jsonify({"error": "item_id is required"}), 400
+            
+        file = request.files.get("file")
+        if not file or file.filename == "":
+            return jsonify({"error": "No file selected"}), 400
+
+        # FIXED: Create uploads directory and save file with unique name
+        uploads_dir = "uploads"
+        os.makedirs(uploads_dir, exist_ok=True)
+        
+        # Generate unique filename to avoid conflicts
+        file_extension = os.path.splitext(file.filename)[1]
+        unique_filename = f"{uuid.uuid4().hex[:10]}{file_extension}"
+        file_path = os.path.join(uploads_dir, unique_filename)
+        
+        file.save(file_path)
+
+        # FIXED: Create documentation record with proper status
+        doc = Documentation(
+            doc_id=f"D{uuid.uuid4().hex[:10].upper()}",
+            item_id=item_id,
+            file_path=file_path,
+            status="Pending Review"
+        )
+        db.session.add(doc)
+        db.session.commit()
+
+        # FIXED: Emit real-time event for new document upload
+        socketio.emit('document_uploaded', {
+            "doc_id": doc.doc_id,
+            "item_id": item_id,
+            "file_name": file.filename,
+            "status": "Pending Review",
+            "timestamp": doc.timestamp.strftime("%Y-%m-%d %H:%M") if doc.timestamp else "N/A"
+        })
+
+        print(f"Document uploaded: {doc.doc_id} for service {item_id}")
+
+        return jsonify({
+            "status": "uploaded", 
+            "doc_id": doc.doc_id,
+            "message": "Document uploaded successfully and is pending review"
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error uploading document: {str(e)}")
+        return jsonify({"error": "Failed to upload document"}), 500
+
+
+@app.route("/appeals-predict", methods=["POST"])
+def appeals_predict():
+    """
+    Endpoint to manually trigger ML prediction for a specific request.
+    Returns ML prediction (risk + confidence) for appeal assessment using service-specific models.
+    """
+    try:
+        data = request.get_json()
+        item_id = data.get("item_id")
+        service = db.session.get(ServiceRequested, item_id)
+        if not service:
+            return jsonify({"error": "Invalid item_id"}), 404
+
+        # Get associated data for prediction
+        req = db.session.get(Request, service.request_id)
+        patient = db.session.get(Patient, req.patient_id)
+        
+        if not req or not patient:
+            return jsonify({"error": "Request or patient data not found"}), 404
+
+        # Prepare data for ML prediction
+        patient_dict = {
+            "age": patient.age,
+            "gender": patient.gender,
+            "state": patient.state,
+            "risk_score": patient.risk_score,
+        }
+        service_dict = {
+            "service_type": service.service_type,
+            "service_name": service.service_name,
+            "service_code": service.service_code,
+            "tier": service.tier,
+            "requires_pa": service.requires_pa,
+            "is_high_cost": service.is_high_cost,
+            "step_therapy": service.step_therapy,
+            "estimated_cost": service.estimated_cost,
+        }
+        request_dict = {
+            "prior_denials": req.prior_denials,
+            "deductible": req.deductible,
+            "coinsurance": req.coinsurance,
+        }
+
+        # Run ML prediction with service-specific models
+        print(f"Running ML prediction for item {item_id} (service_type: {service.service_type})")
+        should_appeal, confidence, risk_level = predict_appeal_risk(service_dict, patient_dict, request_dict)
+        
+        # Also get appeal level prediction
+        appeal_level = predict_appeal_level(service_dict, patient_dict, request_dict)
+        
+        # Update the service with ML results
+        service.appeal_recommended = should_appeal
+        service.appeal_confidence = confidence
+        service.appeal_risk = risk_level
+        
+        db.session.commit()
+
+        # Emit real-time event for ML prediction update
+        socketio.emit('ml_prediction_updated', {
+            "item_id": item_id,
+            "service_type": service.service_type,
+            "appeal_recommended": should_appeal,
+            "appeal_confidence": confidence,
+            "appeal_risk": risk_level,
+            "appeal_level": appeal_level,
+            "confidence_percentage": f"{confidence * 100:.1f}%"
+        })
+
+        print(
+            f"ML Prediction for {item_id}: Appeal={should_appeal}, Confidence={confidence:.2f}, Risk={risk_level}, Level={appeal_level:.2f}%")
+
+        return jsonify({
+            "item_id": item_id,
+            "service_type": service.service_type,
+            "appeal_recommended": should_appeal,
+            "appeal_confidence": confidence,
+            "appeal_risk": risk_level,
+            "appeal_level": appeal_level,
+            "confidence_percentage": f"{confidence * 100:.1f}%",
+            "message": f"ML prediction completed using {service.service_type} model: {'Appeal recommended' if should_appeal else 'Appeal not recommended'} with {confidence * 100:.1f}% confidence"
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error predicting appeal: {str(e)}")
+        return jsonify({"error": "Failed to predict appeal"}), 500
+
+
+@app.route("/predict-appeal-by-service", methods=["POST"])
+def predict_appeal_by_service():
+    """
+    New endpoint to test service-specific model predictions directly.
+    Accepts service data and returns predictions from the appropriate model.
+    """
+    try:
+        data = request.get_json()
+        
+        # Extract service, patient, and request data
+        service_dict = data.get("service", {})
+        patient_dict = data.get("patient", {})
+        request_dict = data.get("request", {})
+        
+        if not service_dict:
+            return jsonify({"error": "Service data is required"}), 400
+        
+        service_type = (service_dict.get('service_type') or '').lower()
+        
+        # Map service types to our model categories
+        if service_type in ['medication', 'drug', 'pharmaceutical']:
+            model_key = 'medication'
+        elif service_type in ['procedure', 'surgery', 'treatment', 'therapy']:
+            model_key = 'procedure'
+        elif service_type in ['dme', 'durable medical equipment', 'equipment', 'device']:
+            model_key = 'dme'
+        else:
+            model_key = 'medication'  # Default
+        
+        # Run predictions using unified models, fallback to heuristics
+        try:
+            should_appeal, confidence, risk_level = predict_appeal_risk(service_dict, patient_dict, request_dict)
+            model_used = f"model:{model_key}" if models.get(model_key) is not None else "heuristic"
+        except Exception:
+            should_appeal, confidence, risk_level = fallback_appeal_prediction(service_dict, patient_dict, request_dict)
+            model_used = "heuristic"
+        appeal_level = predict_appeal_level(service_dict, patient_dict, request_dict)
+        
+        return jsonify({
+            "service_type": service_type,
+            "model_used": model_used,
+            "model_available": True,
+            "predictions": {
+                "should_appeal": should_appeal,
+                "confidence": confidence,
+                "risk_level": risk_level,
+                "appeal_level_percentage": appeal_level
+            },
+            "confidence_percentage": f"{confidence * 100:.1f}%",
+            "message": f"Prediction completed using {model_key} model for {service_type} service"
+        })
+        
+    except Exception as e:
+        print(f"Error in predict_appeal_by_service: {str(e)}")
+        return jsonify({"error": f"Failed to predict appeal: {str(e)}"}), 500
+
+
+@app.route("/ml-models-status", methods=["GET"])
+def ml_models_status():
+    """
+    Endpoint to check the status of loaded ML models.
+    """
+    try:
+        model_status = {}
+        for service_type, model in models.items():
+            model_status[service_type] = {
+                "loaded": model is not None
+            }
+        
+        return jsonify({
+            "ml_available": ML_MODEL_AVAILABLE,
+            "models": model_status,
+            "model_files": APPEAL_MODEL_FILES,
+            "message": f"ML system status: models {sum(1 for m in models.values() if m is not None)}/{len(models)}"
+        })
+    except Exception as e:
+        print(f"Error checking ML models status: {str(e)}")
+        return jsonify({"error": f"Failed to check ML models status: {str(e)}"}), 500
+
+
+@app.route("/appealed-requests", methods=["GET"])
+def get_appealed_requests():
+    """
+    Returns all requests where appeal_recommended=True OR status is "Appealed" (for dashboards).
+    """
+    try:
+        # FIXED: Get both appealed requests and those with appeal_recommended=True
+        services = ServiceRequested.query.filter(
+            (ServiceRequested.appeal_recommended == True) | 
+            (ServiceRequested.approval_status == "Appealed")
+        ).join(Request).order_by(Request.timestamp.desc()).all()
+        
+        appealed_requests = []
+        
+        for service in services:
+            req = db.session.get(Request, service.request_id)
+            if not req:
+                continue
+                
+            patient = db.session.get(Patient, req.patient_id)
+            if not patient:
+                continue
+            
+            appealed_requests.append({
+                "item_id": service.item_id,
+                "request_id": req.request_id,
+                "patient_id": req.patient_id,
+                "patient_name": patient.patient_name or "Unknown",
+                "patient_age": patient.age,
+                "service_name": service.service_name,
+                "service_type": service.service_type,
+                "approval_status": service.approval_status,
+                "appeal_recommended": service.appeal_recommended,
+                "appeal_confidence": service.appeal_confidence,
+                "appeal_risk": service.appeal_risk,
+                "estimated_cost": service.estimated_cost,
+                "timestamp": req.timestamp.strftime("%Y-%m-%d %H:%M") if req.timestamp else "N/A",
+                "diagnosis": req.diagnosis,
+                "risk_score": patient.risk_score
+            })
+        
+        return jsonify({"appealed_requests": appealed_requests})
+    except Exception as e:
+        print(f"Error fetching appealed requests: {str(e)}")
+        return jsonify({"error": "Failed to fetch appealed requests"}), 500
+
+
+@app.route("/appeals/<doctor_id>", methods=["GET"])
+def get_doctor_appeals(doctor_id):
+    """
+    Returns appeals for a given doctor from the normalized appeals table.
+    If doctor_id is not linked (current schema), returns all appeals.
+    """
+    try:
+        query = Appeals.query
+        try:
+            did = int(doctor_id)
+            query = query.filter((Appeals.doctor_id == did) | (Appeals.doctor_id.is_(None)))
+        except Exception:
+            # If non-integer, ignore and return all
+            pass
+        appeals = query.order_by(Appeals.created_at.desc()).all()
+        results = []
+        for a in appeals:
+            req = db.session.get(Request, a.request_id)
+            sreq = ServiceRequested.query.filter_by(request_id=a.request_id).first()
+            results.append({
+                "id": a.id,
+                "requestId": a.request_id,
+                "patientId": a.patient_id,
+                "service": sreq.service_name if sreq else 'N/A',
+                "appealLevelPercentage": f"{(a.appeal_level or 0):.1f}%",
+                "createdAt": a.created_at.strftime("%Y-%m-%d %H:%M") if a.created_at else "N/A"
+            })
+        return jsonify({"appeals": results})
+    except Exception as e:
+        print(f"Error fetching doctor appeals: {str(e)}")
+        return jsonify({"error": "Failed to fetch doctor appeals"}), 500
+
+@app.route('/api/doctor-appeals', methods=['GET'])
+def get_doctor_appeals_detailed():
+    """
+    Returns detailed appeals for doctors from the Appeal table with full status information.
+    """
+    try:
+        # Get all appeals with their related data
+        appeals = db.session.query(Appeal).join(ServiceRequested, Appeal.item_id == ServiceRequested.item_id)\
+            .join(Request, ServiceRequested.request_id == Request.request_id)\
+            .join(Patient, Request.patient_id == Patient.patient_id)\
+            .order_by(Appeal.timestamp.desc()).all()
+        
+        results = []
+        for appeal in appeals:
+            # Get the service request
+            service = db.session.get(ServiceRequested, appeal.item_id)
+            request = db.session.get(Request, service.request_id) if service else None
+            patient = db.session.get(Patient, request.patient_id) if request else None
+            
+            results.append({
+                "appeal_id": appeal.appeal_id,
+                "request_id": request.request_id if request else 'N/A',
+                "patient_id": patient.patient_id if patient else 'N/A',
+                "patient_name": patient.patient_name if patient else 'N/A',
+                "service_name": service.service_name if service else 'N/A',
+                "service_type": service.service_type if service else 'N/A',
+                "originalStatus": service.approval_status if service else 'Denied',
+                "appeal_status": appeal.appeal_status,
+                "appeal_outcome": appeal.appeal_outcome,
+                "appeal_reason": appeal.appeal_reason,
+                "appeal_documents": appeal.appeal_documents,
+                "admin_notes": appeal.admin_notes,
+                "created_at": appeal.timestamp.strftime("%Y-%m-%d %H:%M") if appeal.timestamp else 'N/A',
+                "reviewed_at": appeal.reviewed_at.strftime("%Y-%m-%d %H:%M") if appeal.reviewed_at else None,
+                "reviewer_id": appeal.reviewer_id,
+                "appealLevelPercentage": f"{(service.appeal_confidence * 100):.1f}%" if service and service.appeal_confidence else "0.0%"
+            })
+        
+        return jsonify({"appeals": results})
+    except Exception as e:
+        print(f"Error fetching detailed doctor appeals: {str(e)}")
+        return jsonify({"error": "Failed to fetch doctor appeals"}), 500
+
+@app.route('/api/admin-appeals', methods=['GET'])
+def get_admin_appeals():
+    """
+    Returns detailed appeals for admin dashboard with full status information.
+    """
+    try:
+        # Get all appeals with their related data
+        appeals = db.session.query(Appeal).join(ServiceRequested, Appeal.item_id == ServiceRequested.item_id)\
+            .join(Request, ServiceRequested.request_id == Request.request_id)\
+            .join(Patient, Request.patient_id == Patient.patient_id)\
+            .order_by(Appeal.timestamp.desc()).all()
+        
+        results = []
+        for appeal in appeals:
+            # Get the service request
+            service = db.session.get(ServiceRequested, appeal.item_id)
+            request = db.session.get(Request, service.request_id) if service else None
+            patient = db.session.get(Patient, request.patient_id) if request else None
+            
+            results.append({
+                "appeal_id": appeal.appeal_id,
+                "request_id": request.request_id if request else 'N/A',
+                "patient_id": patient.patient_id if patient else 'N/A',
+                "patient_name": patient.patient_name if patient else 'N/A',
+                "service_name": service.service_name if service else 'N/A',
+                "service_type": service.service_type if service else 'N/A',
+                "originalStatus": service.approval_status if service else 'Denied',
+                "appeal_status": appeal.appeal_status,
+                "appeal_outcome": appeal.appeal_outcome,
+                "appeal_reason": appeal.appeal_reason,
+                "appeal_documents": appeal.appeal_documents,
+                "admin_notes": appeal.admin_notes,
+                "created_at": appeal.timestamp.strftime("%Y-%m-%d %H:%M") if appeal.timestamp else 'N/A',
+                "reviewed_at": appeal.reviewed_at.strftime("%Y-%m-%d %H:%M") if appeal.reviewed_at else None,
+                "reviewer_id": appeal.reviewer_id,
+                "appealLevelPercentage": f"{(service.appeal_confidence * 100):.1f}%" if service and service.appeal_confidence else "0.0%"
+            })
+        
+        return jsonify({"appeals": results})
+    except Exception as e:
+        print(f"Error fetching admin appeals: {str(e)}")
+        return jsonify({"error": "Failed to fetch admin appeals"}), 500
+
+@app.route('/api/admin-appeals/<appeal_id>/decision', methods=['POST'])
+def update_appeal_decision_admin(appeal_id):
+    """
+    Admin can approve or deny an appeal.
+    """
+    try:
+        data = request.get_json()
+        decision = data.get("decision")  # "Approved" or "Denied"
+        admin_notes = data.get("admin_notes", "")
+        
+        if decision not in ["Approved", "Denied"]:
+            return jsonify({"error": "Invalid decision. Must be 'Approved' or 'Denied'"}), 400
+        
+        appeal = db.session.get(Appeal, appeal_id)
+        if not appeal:
+            return jsonify({"error": "Appeal not found"}), 404
+        
+        # Update appeal
+        appeal.appeal_outcome = decision
+        appeal.appeal_status = "Completed"
+        appeal.admin_notes = admin_notes
+        appeal.reviewed_at = datetime.datetime.utcnow()
+        appeal.reviewer_id = "admin"  # In a real system, this would be the actual admin ID
+        
+        # If approved, update the original service request status
+        if decision == "Approved":
+            service = db.session.get(ServiceRequested, appeal.item_id)
+            if service:
+                service.approval_status = "Approved"
+                # Update the request status as well
+                request = db.session.get(Request, service.request_id)
+                if request:
+                    # Check if all services in this request are now approved
+                    all_services = ServiceRequested.query.filter_by(request_id=request.request_id).all()
+                    if all(s.approval_status == "Approved" for s in all_services):
+                        request.status = "Approved"
+        
+        db.session.commit()
+        
+        # Emit real-time update
+        socketio.emit('appeal_decision_updated', {
+            "appeal_id": appeal_id,
+            "decision": decision,
+            "admin_notes": admin_notes,
+            "reviewed_at": appeal.reviewed_at.strftime("%Y-%m-%d %H:%M")
+        })
+        
+        return jsonify({
+            "status": "success",
+            "decision": decision,
+            "admin_notes": admin_notes,
+            "reviewed_at": appeal.reviewed_at.strftime("%Y-%m-%d %H:%M")
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating appeal decision: {str(e)}")
+        return jsonify({"error": "Failed to update appeal decision"}), 500
+
+@app.route("/api/rule-engine/<item_id>", methods=["POST"])
+def run_rule_engine_for_admin(item_id):
+    """
+    Admin can manually trigger rule engine for a specific request.
+    """
+    try:
+        service = db.session.get(ServiceRequested, item_id)
+        if not service:
+            return jsonify({"error": "Request not found"}), 404
+
+        request_obj = db.session.get(Request, service.request_id)
+        if not request_obj:
+            return jsonify({"error": "Request details not found"}), 404
+
+        patient = db.session.get(Patient, request_obj.patient_id)
+        if not patient:
+            return jsonify({"error": "Patient not found"}), 404
+
+        # Run rule engine
+        patient_dict = {
+            "age": patient.age,
+            "gender": patient.gender,
+            "state": patient.state,
+            "risk_score": patient.risk_score
+        }
+        service_dict = {
+            "service_type": service.service_type,
+            "service_name": service.service_name,
+            "service_code": service.service_code,
+            "tier": service.tier,
+            "requires_pa": service.requires_pa,
+            "is_high_cost": service.is_high_cost,
+            "step_therapy": service.step_therapy
+        }
+        
+        request_dict = {
+            "diagnosis": request_obj.diagnosis,
+            "diagnosis_category": request_obj.diagnosis_category,
+            "plan_type": request_obj.plan_type,
+            "deductible": request_obj.deductible,
+            "coinsurance": request_obj.coinsurance,
+            "out_of_pocket_max": request_obj.out_of_pocket_max,
+            "member_months": request_obj.member_months,
+            "prior_denials": request_obj.prior_denials,
+        }
+        
+        status, reason = run_rules_engine(service_dict, patient_dict, request_dict)
+        
+        # Update the service status
+        previous_status = service.approval_status
+        service.approval_status = status
+        
+        db.session.commit()
+
+        # Emit real-time update
+        socketio.emit('request_updated', {
+            "id": item_id, 
+            "status": status,
+            "rule_reason": reason
+        })
+
+        return jsonify({
+            "item_id": item_id,
+            "previous_status": previous_status,
+            "new_status": status,
+            "rule_reason": reason
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error running rule engine: {str(e)}")
+        return jsonify({"error": "Failed to run rule engine"}), 500
+
+
+@app.route("/appeals", methods=["POST"])
+def submit_appeal():
+    try:
+        data = request.get_json()
+        item_id = data.get("item_id")
+        appeal_reason = data.get("appeal_notes", "")
+        appeal_documents = data.get("appeal_documents", "")
+
+        service = db.session.get(ServiceRequested, item_id)
+        if not service:
+            return jsonify({"error": "Service request not found"}), 404
+
+        req = db.session.get(Request, service.request_id)
+        patient = db.session.get(Patient, req.patient_id)
+        
+        if not req or not patient:
+            return jsonify({"error": "Request or patient data not found"}), 404
+
+        # Check if appeal is allowed based on ML prediction
+        patient_dict = {
+            "age": patient.age,
+            "gender": patient.gender,
+            "state": patient.state,
+            "risk_score": patient.risk_score,
+        }
+        service_dict = {
+            "service_type": service.service_type,
+            "service_name": service.service_name,
+            "service_code": service.service_code,
+            "tier": service.tier,
+            "requires_pa": service.requires_pa,
+            "is_high_cost": service.is_high_cost,
+            "step_therapy": service.step_therapy,
+            "estimated_cost": service.estimated_cost,
+        }
+        request_dict = {
+            "prior_denials": req.prior_denials,
+            "deductible": req.deductible,
+            "coinsurance": req.coinsurance,
+        }
+
+        # Decide appeal eligibility using existing score first, then ML, then heuristic fallback
+        prior_score_pct = int(round((service.appeal_confidence or 0) * 100)) if service.appeal_confidence is not None else 0
+        should_appeal = None
+        confidence = None
+        risk_level = None
+        appeal_level = None
+
+        # If frontend already showed the Appeal button (>=80), trust previously computed score
+        if prior_score_pct >= 80:
+            should_appeal = True
+            confidence = float(service.appeal_confidence)
+            risk_level = service.appeal_risk or "High"
+            appeal_level = float(prior_score_pct)
+        else:
+            # Try ML prediction first
+            try:
+                print(f"Running ML prediction for appeal submission on item {item_id} (service_type: {service.service_type})")
+                should_appeal, confidence, risk_level = predict_appeal_risk(service_dict, patient_dict, request_dict)
+                appeal_level = predict_appeal_level(service_dict, patient_dict, request_dict)
+            except Exception as _ml_err:
+                # Fall back to heuristic rule if ML unavailable
+                print(f"Warning: ML prediction failed for appeals, using fallback. Error: {_ml_err}")
+                should_appeal, confidence, risk_level = fallback_appeal_prediction(service_dict, patient_dict, request_dict)
+                try:
+                    # Derive % from confidence when using fallback
+                    appeal_level = float(int(round((confidence or 0) * 100)))
+                except Exception:
+                    appeal_level = 0.0
+        # Enforce server-side threshold only if we didn't already trust a prior >=80 score
+        if prior_score_pct < 80 and float(appeal_level) < 80.0:
+            return jsonify({
+                "error": "Appeal not allowed",
+                "message": f"Appeal success probability is {appeal_level:.1f}%, which is below the 80% threshold required for appeals.",
+                "ml_prediction": {
+                    "appeal_level": appeal_level,
+                    "confidence": confidence,
+                    "risk_level": risk_level
+                }
+            }), 400
+        print("inga 1")
+        # Create appeal record
+        appeal = Appeal(
+            appeal_id=f"A{uuid.uuid4().hex[:10].upper()}",
+            item_id=item_id,
+            appeal_outcome="Pending",
+            appeal_reason=appeal_reason,
+            appeal_documents=appeal_documents,
+            appeal_status="Submitted",
+            admin_notes=""
+        )
+        db.session.add(appeal)
+
+        # Update service status to "Appealed"
+        service.approval_status = "Appealed"
+        service.appeal_recommended = should_appeal
+        service.appeal_confidence = confidence
+        service.appeal_risk = risk_level
+        
+        db.session.commit()
+
+        # 🔄 AUTOMATED APPEAL EVALUATION
+        print(f"🔄 Starting automated appeal evaluation for {appeal.appeal_id}")
+        evaluation_result = evaluate_appeal_with_new_info(appeal.appeal_id, appeal_reason, appeal_documents)
+        
+        if "error" in evaluation_result:
+            print(f"⚠️ Appeal evaluation failed: {evaluation_result['error']}")
+            # Continue with manual review if automated evaluation fails
+            appeal.appeal_status = "Under Review"
+            db.session.commit()
+
+        # Emit real-time event for new appeal
+        socketio.emit('new_appeal', {
+            "appeal_id": appeal.appeal_id,
+            "item_id": item_id,
+            "request_id": req.request_id,
+            "patient_id": req.patient_id,
+            "patient_name": patient.patient_name or "Unknown",
+            "service_name": service.service_name,
+            "service_type": service.service_type,
+            "appeal_reason": appeal_reason,
+            "appeal_documents": appeal_documents,
+            "appeal_recommended": should_appeal,
+            "appeal_confidence": confidence,
+            "appeal_risk": risk_level,
+            "appeal_level": appeal_level,
+            "confidence_percentage": f"{confidence * 100:.1f}%",
+            "timestamp": appeal.timestamp.strftime("%Y-%m-%d %H:%M") if appeal.timestamp else "N/A",
+            "evaluation_result": evaluation_result
+        })
+
+        print(f"Appeal submitted: {appeal.appeal_id} for service {item_id}")
+        print(f"ML Prediction: Appeal={should_appeal}, Confidence={confidence:.2f}, Risk={risk_level}, Level={appeal_level:.2f}%")
+
+        return jsonify({
+            "appeal_id": appeal.appeal_id, 
+            "status": "submitted",
+            "message": "Appeal submitted successfully and is being automatically evaluated",
+            "ml_prediction": {
+                "appeal_recommended": should_appeal,
+                "appeal_confidence": confidence,
+                "appeal_risk": risk_level,
+                "appeal_level": appeal_level,
+                "confidence_percentage": f"{confidence * 100:.1f}%",
+                "service_type": service.service_type
+            },
+            "evaluation_result": evaluation_result
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error submitting appeal: {str(e)}")
+        return jsonify({"error": "Failed to submit appeal"}), 500
+
+
+@app.route("/audit", methods=["GET"])
+def audit_logs():
+    try:
+        services = ServiceRequested.query.all()
+        logs = []
+        now = datetime.datetime.utcnow().isoformat()
+        for s in services:
+            logs.append({
+                "request_id": s.request_id,
+                "item_id": s.item_id,
+                "service_type": s.service_type,
+                "service_name": s.service_name,
+                "approval_status": s.approval_status,
+                "appeal_risk": s.appeal_risk,
+                "appeal_confidence": s.appeal_confidence,
+                "timestamp": now
+            })
+        return jsonify({"logs": logs})
+    except Exception as e:
+        print(f"Error fetching audit logs: {str(e)}")
+        return jsonify({"error": "Failed to fetch audit logs"}), 500
+
+
+@app.route("/test-rule-engine", methods=["POST"])
+def test_rule_engine_endpoint():
+    """
+    Test endpoint to directly test the rule engine with sample data.
+    """
+    try:
+        data = request.get_json()
+        
+        # Extract the data
+        service_data = data.get("service", {})
+        patient_data = data.get("patient", {})
+        request_data = data.get("request", {})
+        
+        if not service_data or not request_data:
+            return jsonify({"error": "Service and request data are required"}), 400
+        
+        # Run both local and LLM rule engines for comparison
+        local_decision, local_reason = run_local_rules_engine(service_data, patient_data, request_data)
+        
+        # Try LLM engine if configured
+        llm_decision, llm_reason = None, None
+        if LLM_PROVIDER == "gemini" and genai and GEMINI_API_KEY:
+            try:
+                llm_decision, llm_reason = run_rules_engine(service_data, patient_data, request_data)
+            except Exception as e:
+                llm_decision, llm_reason = "Error", str(e)
+        
+        response = {
+            "service": service_data.get("service_name"),
+            "diagnosis": request_data.get("diagnosis"),
+            "service_type": service_data.get("service_type"),
+            "local_engine": {
+                "decision": local_decision,
+                "reason": local_reason
+            }
+        }
+        
+        if llm_decision:
+            response["llm_engine"] = {
+                "decision": llm_decision,
+                "reason": llm_reason
+            }
+        else:
+            response["llm_engine"] = {"status": "Not configured or unavailable"}
+        
+        return jsonify(response)
+        
+    except Exception as e:
+        print(f"Error in test rule engine: {str(e)}")
+        return jsonify({"error": f"Failed to test rule engine: {str(e)}"}), 500
+
+
+def evaluate_appeal_with_new_info(appeal_id: str, new_reason: str, new_documents: str = None) -> dict:
+    """
+    Automatically re-evaluate a denied request when appeal is submitted.
+    This function runs the rules engine again with the new appeal information.
+    Uses your specific input features and rules structure.
+    """
+    try:
+        # Get the appeal and associated service
+        appeal = db.session.get(Appeal, appeal_id)
+        if not appeal:
+            return {"error": "Appeal not found"}
+        
+        service = db.session.get(ServiceRequested, appeal.item_id)
+        if not service:
+            return {"error": "Service not found"}
+        
+        request_obj = db.session.get(Request, service.request_id)
+        patient = db.session.get(Patient, request_obj.patient_id)
+        
+        if not all([request_obj, patient]):
+            return {"error": "Request or patient data not found"}
+        
+        print(f"🔄 Re-evaluating appeal {appeal_id} for service {service.service_name}")
+        
+        # Prepare data for rule engine with appeal context using YOUR specific features
+        patient_dict = {
+            "age": patient.age,
+            "gender": patient.gender,
+            "state": patient.state,
+            "risk_score": patient.risk_score,
+        }
+        
+        service_dict = {
+            "service_type": service.service_type,
+            "service_name": service.service_name,
+            "service_code": service.service_code,
+            "tier": service.tier,
+            "requires_pa": service.requires_pa,
+            "is_high_cost": service.is_high_cost,
+            "step_therapy": service.step_therapy,
+            "estimated_cost": service.estimated_cost,
+        }
+        
+        # Enhanced request data including appeal information and YOUR specific features
+        request_dict = {
+            "diagnosis": request_obj.diagnosis,
+            "diagnosis_category": request_obj.diagnosis_category,
+            "plan_type": request_obj.plan_type,
+            "deductible": request_obj.deductible,
+            "coinsurance": request_obj.coinsurance,
+            "out_of_pocket_max": request_obj.out_of_pocket_max,
+            "member_months": request_obj.member_months,
+            "prior_denials": request_obj.prior_denials,
+            # Appeal-specific enhancements that work with your rules
+            "appeal_reason": new_reason,
+            "appeal_documents": new_documents,
+            "appeal_submitted": True,
+            "original_denial_reason": service.rule_reason,
+            # Extract clinical data from appeal for rule evaluation
+            "clinical_data": extract_clinical_data_from_appeal(new_reason, new_documents)
+        }
+        
+        # Run the rule engine again with appeal context
+        new_status, new_reason = run_rules_engine(service_dict, patient_dict, request_dict)
+        
+        print(f"🔄 Appeal re-evaluation result: {new_status} - {new_reason}")
+        
+        # Update the service status based on appeal result
+        previous_status = service.approval_status
+        service.approval_status = new_status
+        service.rule_reason = new_reason
+        
+        # Update appeal status
+        if new_status == "Approved":
+            appeal.appeal_outcome = "Approved"
+            appeal.appeal_status = "Completed"
+            appeal.reviewed_at = datetime.datetime.utcnow()
+            appeal.reviewer_id = "System_Auto_Review"
+        else:
+            appeal.appeal_outcome = "Denied"
+            appeal.appeal_status = "Completed"
+            appeal.reviewed_at = datetime.datetime.utcnow()
+            appeal.reviewer_id = "System_Auto_Review"
+        
+        db.session.commit()
+        
+        # Emit real-time updates to both admin and doctor dashboards
+        socketio.emit('appeal_evaluated', {
+            "appeal_id": appeal_id,
+            "item_id": service.item_id,
+            "request_id": request_obj.request_id,
+            "patient_id": patient.patient_id,
+            "previous_status": previous_status,
+            "new_status": new_status,
+            "new_reason": new_reason,
+            "appeal_outcome": appeal.appeal_outcome,
+            "evaluated_at": appeal.reviewed_at.strftime("%Y-%m-%d %H:%M") if appeal.reviewed_at else "N/A"
+        })
+        
+        return {
+            "appeal_id": appeal_id,
+            "previous_status": previous_status,
+            "new_status": new_status,
+            "new_reason": new_reason,
+            "appeal_outcome": appeal.appeal_outcome,
+            "evaluated_at": appeal.reviewed_at.strftime("%Y-%m-%d %H:%M") if appeal.reviewed_at else "N/A"
+        }
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error evaluating appeal: {str(e)}")
+        return {"error": f"Failed to evaluate appeal: {str(e)}"}
+
+
+def extract_clinical_data_from_appeal(appeal_reason: str, appeal_documents: str) -> dict:
+    """
+    Extract clinical data from appeal text to use in rule evaluation.
+    This function parses appeal text to find clinical values that match your rule conditions.
+    """
+    clinical_data = {
+        "prior_therapies": [],
+        "HbA1c": None,
+        "BMI": None,
+        "LDL": None
+    }
+    
+    if not appeal_reason and not appeal_documents:
+        return clinical_data
+    
+    # Combine appeal reason and documents for analysis
+    full_text = f"{appeal_reason or ''} {appeal_documents or ''}".lower()
+    
+    # Extract prior therapies (common medications from your rules)
+    therapy_keywords = [
+        "metformin", "sulfonylurea", "methotrexate", "statin", "high-intensity statin",
+        "tnf inhibitor", "adalimumab", "infliximab", "secukinumab", "tirzepatide",
+        "empagliflozin", "semaglutide", "linagliptin", "pravastatin", "simvastatin"
+    ]
+    
+    for therapy in therapy_keywords:
+        if therapy in full_text:
+            clinical_data["prior_therapies"].append(therapy.title())
+    
+    # Extract HbA1c values (look for patterns like "HbA1c 8.2%" or "A1c >7.0")
+    hba1c_patterns = [
+        r"hba1c\s*([0-9]+\.?[0-9]*)\s*%",
+        r"a1c\s*([0-9]+\.?[0-9]*)\s*%",
+        r"hba1c\s*>\s*([0-9]+\.?[0-9]*)",
+        r"a1c\s*>\s*([0-9]+\.?[0-9]*)"
+    ]
+    
+    for pattern in hba1c_patterns:
+        match = re.search(pattern, full_text)
+        if match:
+            clinical_data["HbA1c"] = float(match.group(1))
+            break
+    
+    # Extract BMI values (look for patterns like "BMI 32" or "BMI >30")
+    bmi_patterns = [
+        r"bmi\s*([0-9]+\.?[0-9]*)",
+        r"bmi\s*>\s*([0-9]+\.?[0-9]*)",
+        r"body mass index\s*([0-9]+\.?[0-9]*)"
+    ]
+    
+    for pattern in bmi_patterns:
+        match = re.search(pattern, full_text)
+        if match:
+            clinical_data["BMI"] = float(match.group(1))
+            break
+    
+    # Extract LDL values (look for patterns like "LDL 160" or "LDL >130")
+    ldl_patterns = [
+        r"ldl\s*([0-9]+\.?[0-9]*)",
+        r"ldl\s*>\s*([0-9]+\.?[0-9]*)",
+        r"low-density lipoprotein\s*([0-9]+\.?[0-9]*)"
+    ]
+    
+    for pattern in ldl_patterns:
+        match = re.search(pattern, full_text)
+        if match:
+            clinical_data["LDL"] = float(match.group(1))
+            break
+    
+    print(f"🔍 Extracted clinical data from appeal: {clinical_data}")
+    return clinical_data
+
+
+def create_appeal_specific_rules(service_name: str, diagnosis: str, original_denial_reason: str) -> list:
+    """
+    Create appeal-specific rules based on your rules_1000.json structure.
+    This function generates rules that can be used to evaluate appeals.
+    """
+    appeal_rules = []
+    
+    # Rule 1: Prior Therapy Documentation Appeal
+    if "prior therapy" in original_denial_reason.lower():
+        appeal_rules.append({
+            "rule_id": f"APPEAL-{service_name.upper()}-001",
+            "service_type": "Medication",
+            "services": [service_name],
+            "diagnosis": [diagnosis],
+            "conditions": {
+                "prior_therapies": ["ANY_DOCUMENTED"],  # Will match any documented prior therapy
+                "appeal_context": "Prior therapy documentation provided in appeal"
+            },
+            "decision": "Approved",
+            "reason": f"Appeal approved: Prior therapy documentation provided for {service_name}",
+            "appeal_rules": {
+                "denial_reason": "Missing prior therapy documentation",
+                "appeal_check": "Prior therapy documentation must be provided in appeal"
+            }
+        })
+    
+    # Rule 2: Clinical Values Appeal (HbA1c, BMI, LDL)
+    clinical_conditions = []
+    if "hba1c" in original_denial_reason.lower():
+        clinical_conditions.append("HbA1c value provided in appeal")
+    if "bmi" in original_denial_reason.lower():
+        clinical_conditions.append("BMI value provided in appeal")
+    if "ldl" in original_denial_reason.lower():
+        clinical_conditions.append("LDL value provided in appeal")
+    
+    if clinical_conditions:
+        appeal_rules.append({
+            "rule_id": f"APPEAL-{service_name.upper()}-002",
+            "service_type": "Medication",
+            "services": [service_name],
+            "diagnosis": [diagnosis],
+            "conditions": {
+                "clinical_values": clinical_conditions,
+                "appeal_context": "Clinical values provided in appeal"
+            },
+            "decision": "Approved",
+            "reason": f"Appeal approved: {', '.join(clinical_conditions)} for {service_name}",
+            "appeal_rules": {
+                "denial_reason": "Missing clinical values",
+                "appeal_check": "Clinical values must be provided in appeal"
+            }
+        })
+    
+    # Rule 3: Step Therapy Failure Appeal
+    if "step therapy" in original_denial_reason.lower():
+        appeal_rules.append({
+            "rule_id": f"APPEAL-{service_name.upper()}-003",
+            "service_type": "Medication",
+            "services": [service_name],
+            "diagnosis": [diagnosis],
+            "conditions": {
+                "step_therapy_failure": True,
+                "appeal_context": "Step therapy failure documented in appeal"
+            },
+            "decision": "Approved",
+            "reason": f"Appeal approved: Step therapy failure documented for {service_name}",
+            "appeal_rules": {
+                "denial_reason": "Step therapy requirements not met",
+                "appeal_check": "Step therapy failure must be documented in appeal"
+            }
+        })
+    
+    print(f"🔧 Created {len(appeal_rules)} appeal-specific rules for {service_name}")
+    return appeal_rules
+
+
+@app.route("/debug-rules", methods=["POST"])
+def debug_rules():
+    """ 
+    Debug endpoint to help troubleshoot rule matching issues.
+    """
+    try:
+        data = request.get_json()
+        service_name = data.get("service_name", "")
+        diagnosis = data.get("diagnosis", "")
+        service_type = data.get("service_type", "medication").lower()
+        
+        # Find all rules for this service type
+        type_rules = [rule for rule in UHC_RULES if rule.get("service_type", "").lower() == service_type]
+        
+        # Find service name matches
+        service_matches = []
+        for rule in type_rules:
+            rule_services = rule.get("services", [])
+            for rule_service in rule_services:
+                if normalize_service_names_match(service_name, rule_service):
+                    service_matches.append({
+                        "rule_id": rule.get("rule_id"),
+                        "services": rule.get("services"),
+                        "diagnoses": rule.get("diagnosis", []),
+                        "conditions": rule.get("conditions", {}),
+                        "decision": rule.get("decision")
+                    })
+                    break
+        
+        # Find exact diagnosis matches
+        exact_matches = []
+        for rule in service_matches:
+            if diagnosis.upper() in [d.strip().upper() for d in rule["diagnoses"]]:
+                exact_matches.append(rule)
+        
+        return jsonify({
+            "search_params": {
+                "service_name": service_name,
+                "diagnosis": diagnosis,
+                "service_type": service_type
+            },
+            "total_rules": len(UHC_RULES),
+            "service_type_matches": len(type_rules),
+            "service_name_matches": len(service_matches),
+            "exact_matches": len(exact_matches),
+            "service_matches": service_matches[:5],  # Show first 5
+            "exact_matches_detail": exact_matches[:3]  # Show first 3 exact matches
+        })
+        
+    except Exception as e:
+        print(f"Error in debug rules: {str(e)}")
+        return jsonify({"error": f"Failed to debug rules: {str(e)}"}), 500
+
+
+@app.route("/api/appeals/<appeal_id>/status", methods=["GET"])
+def get_appeal_status(appeal_id):
+    """
+    Get detailed status of a specific appeal including evaluation results.
+    """
+    try:
+        appeal = db.session.get(Appeal, appeal_id)
+        if not appeal:
+            return jsonify({"error": "Appeal not found"}), 404
+        
+        service = db.session.get(ServiceRequested, appeal.item_id)
+        if not service:
+            return jsonify({"error": "Service not found"}), 404
+        
+        req = db.session.get(Request, service.request_id)
+        patient = db.session.get(Patient, req.patient_id)
+        
+        return jsonify({
+            "appeal_id": appeal.appeal_id,
+            "item_id": appeal.item_id,
+            "request_id": req.request_id if req else None,
+            "patient_id": patient.patient_id if patient else None,
+            "patient_name": patient.patient_name if patient else None,
+            "service_name": service.service_name,
+            "service_type": service.service_type,
+            "appeal_status": appeal.appeal_status,
+            "appeal_outcome": appeal.appeal_outcome,
+            "appeal_reason": appeal.appeal_reason,
+            "appeal_documents": appeal.appeal_documents,
+            "original_status": "Denied",  # Appeals are only for denied requests
+            "current_status": service.approval_status,
+            "rule_reason": service.rule_reason,
+            "appeal_confidence": service.appeal_confidence,
+            "appeal_risk": service.appeal_risk,
+            "submitted_at": appeal.timestamp.strftime("%Y-%m-%d %H:%M") if appeal.timestamp else "N/A",
+            "reviewed_at": appeal.reviewed_at.strftime("%Y-%m-%d %H:%M") if appeal.reviewed_at else "N/A",
+            "reviewer_id": appeal.reviewer_id
+        })
+        
+    except Exception as e:
+        print(f"Error getting appeal status: {str(e)}")
+        return jsonify({"error": f"Failed to get appeal status: {str(e)}"}), 500
+
+
+@app.route("/fhir/coverage-eligibility", methods=["POST"])
+def fhir_eligibility():
+    # Minimal FHIR mapping stub
+    return jsonify({
+        "resourceType": "CoverageEligibilityResponse",
+        "status": "active",
+        "outcome": "denied",
+        "disposition": "Step therapy required before approval"
+    })
+
+
+# ------------------------------
+# SocketIO event handlers
+# ------------------------------
+@socketio.on('connect')
+def handle_connect():
+    print('Client connected')
+
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print('Client disconnected')
+
+
+# ------------------------------
+# Run
+# ------------------------------
+if __name__ == "__main__":
+    import os
+    port = int(os.environ.get("PORT", 5000))
+    
+    # Test Snowflake connection first
+    print("🔍 Testing Snowflake connection...")
+    if test_snowflake_connection():
+        print("✅ Snowflake connection successful!")
+    else:
+        print("❌ Snowflake connection failed. Please check your configuration.")
+        print("Make sure to set the following environment variables:")
+        print("- SNOWFLAKE_ACCOUNT")
+        print("- SNOWFLAKE_USER") 
+        print("- SNOWFLAKE_PASSWORD")
+        print("- SNOWFLAKE_WAREHOUSE")
+        print("- SNOWFLAKE_DATABASE")
+        print("- SNOWFLAKE_SCHEMA")
+        print("- SNOWFLAKE_ROLE")
+        exit(1)
+    
+    with app.app_context():
+        print("🔍 Verifying database tables...")
+        try:
+            # Check if tables exist, if not create them
+            db.create_all()
+            print("✅ Database tables verified/created successfully!")
+        except Exception as e:
+            print(f"❌ Error with database tables: {e}")
+            print("Please run: python create_snowflake_tables.py")
+            exit(1)
+        
+        # Create default users if they don't exist
+        try:
+            # Create default users only if they don't already exist
+            if not User.query.filter_by(email='doctor@example.com').first():
+                db.session.add(
+                    User(
+                        username='Dr. Sarah Johnson',
+                        email='doctor@example.com',
+                        password='password',   # ⚠️ Consider hashing this
+                        role='doctor'
+                    )
+                )
+
+            if not User.query.filter_by(email='admin@example.com').first():
+                db.session.add(
+                    User(
+                        username='Jennifer Martinez',
+                        email='admin@example.com',
+                        password='password',   # ⚠️ Consider hashing this
+                        role='admin'
+                    )
+                )
+
+            db.session.commit()
+
+            print("✅ Default users created successfully!")
+        except Exception as e:
+            print(f"❌ Error creating default users: {e}")
+        
+        print(f"🚀 Starting application on port {port}...")
+        socketio.run(app, host="0.0.0.0", port=port)
