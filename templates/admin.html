@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Insurance Admin Dashboard - InsuRx</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/adminstyle.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Header with Profile Info -->
+    <header class="header">
+        <div class="header-content">
+            <div class="app-info">
+                <div class="app-icon" style="background:transparent;border:none;box-shadow:none;">
+                    <img src="{{ url_for('static', filename='img/insurx-logo.png') }}" alt="InsuRx" style="height:36px;object-fit:contain;display:block;"/>
+                </div>
+            
+            </div>
+            <div class="profile-actions">
+                <div class="notification-badge">
+                    <i class="fas fa-bell"></i>
+                    <span class="badge">3</span>
+                </div>
+                <button class="profile-btn" onclick="showProfileModal()" aria-label="Profile">
+                    <i class="fas fa-user-circle"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+        <div class="nav-container">
+            <button class="nav-tab active" data-tab="requests">
+                <i class="fas fa-inbox"></i>
+                Requests
+            </button>
+            <button class="nav-tab" data-tab="appeals">
+                <i class="fas fa-gavel"></i>
+                Appeals
+            </button>
+            
+            <button class="nav-tab" data-tab="logs">
+                <i class="fas fa-history"></i>
+                Logs
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+        <!-- Requests Inbox Tab (Main Page) -->
+        <div id="requests" class="tab-content active">
+            <div class="content-header">
+                <h2><i class="fas fa-inbox"></i> Requests Inbox</h2>
+                <p>Review and manage insurance requests with AI-powered risk assessment</p>
+                <div class="header-actions">
+                    <div class="search-container">
+                        <input type="text" id="request-search" placeholder="Search requests...">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <select id="status-filter">
+                        <option value="">All Statuses</option>
+                        <option value="Needs Docs">Needs Docs</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Denied">Denied</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="dashboard-stats">
+                <div class="stat-card">
+                    <div class="stat-icon approved">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>Approved</h3>
+                        <p class="stat-number">156</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon denied">
+                        <i class="fas fa-times-circle"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>Denied</h3>
+                        <p class="stat-number">12</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Request ID</th>
+                            <th>Patient Info</th>
+                            <th>Diagnosis</th>
+                            <th>Plan Details</th>
+                            <th>Overall Status</th>
+                            <th>Total Services</th>
+                            
+                            <th>Submitted Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="requests-tbody">
+                        <!-- Request data will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Appeals Management Tab -->
+        <div id="appeals" class="tab-content">
+            <div class="content-header">
+                <h2><i class="fas fa-gavel"></i> Appeals Management</h2>
+                <p>Review and process appeal requests with AI-powered risk prediction</p>
+            </div>
+            
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Appeal ID</th>
+                            <th>Linked Request ID</th>
+                            <th>Patient ID</th>
+                            <th>Service Requested</th>
+                            <th>Original Status</th>
+                            <th>Appeal Risk Prediction</th>
+                            <th>Doctor's Statement</th>
+                            <th>Documentation</th>
+                            <th>Admin Decision</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="appeals-tbody">
+                        <!-- Appeals will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        
+
+        <!-- Logs / Audit Tab -->
+        <div id="logs" class="tab-content">
+            <div class="content-header">
+                <h2><i class="fas fa-history"></i> System Activity Logs</h2>
+                <p>Complete audit trail of all system activities for compliance and traceability</p>
+            </div>
+            
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Request ID</th>
+                            <th>Action Taken</th>
+                            <th>Actor</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logs-tbody">
+                        <!-- Logs will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modals -->
+    <!-- Request Review Modal -->
+    <div id="request-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Review Request</h3>
+                <span class="close" onclick="closeModal('request-modal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="request-details">
+                    <div class="detail-row">
+                        <label>Request ID:</label>
+                        <span id="modal-request-id"></span>
+                    </div>
+                    <div class="detail-row">
+                        <label>Patient ID:</label>
+                        <span id="modal-patient-id"></span>
+                    </div>
+                    <div class="detail-row">
+                        <label>Service:</label>
+                        <span id="modal-service"></span>
+                    </div>
+                    <div class="detail-row">
+                        <label>Risk Score:</label>
+                        <span id="modal-risk-score"></span>
+                    </div>
+                    <div class="detail-row">
+                        <label>Current Status:</label>
+                        <select id="modal-status">
+                            <option value="Approved">Approved</option>
+                            <option value="Denied">Denied</option>
+                            <option value="Needs Docs">Needs Docs</option>
+                        </select>
+                    </div>
+                    <div class="detail-row">
+                        <label>Notes:</label>
+                        <textarea id="modal-notes" placeholder="Add review notes..."></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('request-modal')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveRequestDecision()">Save Decision</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Document View Modal -->
+    <div id="document-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>View Document</h3>
+                <span class="close" onclick="closeModal('document-modal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="document-viewer">
+                    <div class="document-info">
+                        <p><strong>File:</strong> <span id="modal-doc-name"></span></p>
+                        <p><strong>Uploaded:</strong> <span id="modal-doc-timestamp"></span></p>
+                    </div>
+                    <div class="document-preview">
+                        <div class="document-placeholder">
+                            <i class="fas fa-file-pdf"></i>
+                            <p>Document Preview</p>
+                            <small>Click to view full document</small>
+                        </div>
+                    </div>
+                    <div class="document-actions">
+                        <button class="btn btn-success" onclick="markDocumentSufficient()">
+                            <i class="fas fa-check"></i> Mark as Sufficient
+                        </button>
+                        <button class="btn btn-warning" onclick="requestMoreDocs()">
+                            <i class="fas fa-exclamation"></i> Request More
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div id="profile-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Admin Profile</h3>
+                <span class="close" onclick="closeModal('profile-modal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="profile-info">
+                    <div class="profile-avatar">
+                        <i class="fas fa-user-circle"></i>
+                    </div>
+                    <div class="profile-details">
+                        <h4 id="profile-username">Jennifer Martinez</h4>
+                        <p><strong>Role:</strong> Senior Insurance Administrator</p>
+                        <p><strong>Company:</strong> BlueCross BlueShield</p>
+                        <p><strong>Department:</strong> Claims Review</p>
+                        <p><strong>Experience:</strong> 8+ years</p>
+                        <p><strong>Specialization:</strong> High-Risk Claims, Appeals</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+   <div id="notification-container"></div>
+   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+   <script>
+        (function(){
+            try {
+                const user = JSON.parse(localStorage.getItem('cts_user') || '{}');
+                if (user && user.username) {
+                    const top = document.getElementById('top-username');
+                    const prof = document.getElementById('profile-username');
+                    if (top) top.textContent = `Admin: ${user.username}`;
+                    if (prof) prof.textContent = user.username;
+                }
+            } catch (e) {}
+        })();
+   </script>
+   <script src="{{ url_for('static', filename='js/notification.js') }}"></script>
+   <script src="{{ url_for('static', filename='js/adminscript.js') }}"></script>
+</body>
+</html>

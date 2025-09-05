@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InsuRx</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboardstyle.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Header Navigation -->
+    <header class="header">
+        <div class="container">
+            <div class="nav-left">
+                <div class="logo" style="display:flex;align-items:center;gap:10px;">
+                    <img src="{{ url_for('static', filename='img/insurx-logo.png') }}" alt="InsuRx" style="height:36px;object-fit:contain;display:block;"/>
+                
+                </div>
+            </div>
+            <nav class="nav-right">
+                <a href="#about" class="nav-link">About</a>
+                <a href="#contact" class="nav-link">Contact</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-left">
+                    <h1 class="hero-title">Streamlining Prior Authorization for Smarter Healthcare</h1>
+                    <p class="hero-subtitle">Doctors and insurers collaborate seamlessly with AI-driven automation, transparency, and compliance.</p>
+                    
+                    <div class="cta-buttons">
+                        <button class="btn btn-primary doctor-login" onclick="showLoginModal('doctor')">
+                            <i class="fas fa-user-md"></i>
+                            Doctor Login
+                        </button>
+                        <button class="btn btn-secondary admin-login" onclick="showLoginModal('admin')">
+                            <i class="fas fa-user-shield"></i>
+                            Insurance Admin Login
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="hero-right">
+                    <div class="hero-illustration">
+                        <div class="medical-scene">
+                            <div class="doctor-icon">
+                                <i class="fas fa-user-md"></i>
+                            </div>
+                            <div class="patient-icon">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="chart-icon">
+                                <i class="fas fa-clipboard-list"></i>
+                            </div>
+                            <div class="connection-lines"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Feature Highlights -->
+    <section class="features">
+        <div class="container">
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-rocket"></i>
+                    </div>
+                    <h3>Faster Approvals</h3>
+                    <p>Reduce wait times with streamlined workflows</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <h3>AI-Powered Risk Predictions</h3>
+                    <p>Smart algorithms for better decision making</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <h3>Transparent Documentation</h3>
+                    <p>Clear audit trails and compliance tracking</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3>Secure & Compliant</h3>
+                    <p>HIPAA-compliant with enterprise-grade security</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <p>&copy; 2025 InsuRx. All rights reserved.</p>
+                <div class="footer-links">
+                    <a href="#privacy">Privacy Policy</a>
+                    <a href="#terms">Terms of Service</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeLoginModal()">&times;</span>
+            <div class="modal-header">
+                <h2 id="modalTitle">Login</h2>
+                <p id="modalSubtitle">Enter your credentials to continue</p>
+            </div>
+            
+            <form id="loginForm" class="login-form">
+                <div class="form-group">
+                    <label for="username">User Name</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary login-submit">
+                    <span id="loginButtonText">Login</span>
+                </button>
+            </form>
+            
+            <div class="modal-footer">
+                <p id="newUserText">New user?</p>
+                <button id="createAccountBtn" class="btn btn-secondary" onclick="toggleCreateAccount()">
+                    Create New Account
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notification-container"></div>
+
+    <script src="{{ url_for('static', filename='js/notification.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.script.js') }}"></script>
+</body>
+</html>

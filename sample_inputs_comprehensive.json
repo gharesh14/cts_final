@@ -1,0 +1,475 @@
+{
+  "system_logic": {
+    "rule_engine": {
+      "approval_criteria": [
+        "Emergency services - always approved",
+        "Low risk + low tier + low cost - auto-approved", 
+        "High cost + high risk - requires documentation",
+        "Step therapy required - needs documentation",
+        "High tier (≥4) - requires additional review",
+        "State-specific rules - Florida requires PA documentation"
+      ],
+      "denial_criteria": [
+        "High cost + no PA + low risk + very high tier - likely denied",
+        "Services not meeting medical necessity criteria",
+        "LLM not configured - defaults to denied"
+      ]
+    },
+    "ml_appeal_prediction": {
+      "fallback_heuristics": {
+        "patient_factors": {
+          "risk_score > 0.7": "+0.3 points",
+          "age > 65": "+0.2 points"
+        },
+        "service_factors": {
+          "is_high_cost": "+0.2 points",
+          "tier >= 4": "+0.2 points", 
+          "requires_pa": "+0.1 points"
+        },
+        "request_factors": {
+          "prior_denials > 0": "+0.2 points"
+        },
+        "threshold": "≥0.5 points for appeal recommendation",
+        "risk_levels": {
+          "high": "confidence ≥ 0.7",
+          "medium": "confidence 0.5-0.69",
+          "low": "confidence < 0.5"
+        }
+      },
+      "specific_scenarios": {
+        "tirzepatide + E11.9": "High appeal risk, 0.85 confidence",
+        "secukinumab + L40.0": "Medium appeal risk, 0.65 confidence"
+      }
+    }
+  },
+  
+  "sample_inputs": {
+    
+    "scenario_1_approved": {
+      "description": "Low-risk patient requesting tier 1 statin - should be APPROVED",
+      "input": {
+        "patient": {
+          "patient_id": "P001",
+          "patient_name": "John Smith",
+          "age": 45,
+          "gender": "M",
+          "state": "CA",
+          "risk_score": 0.3
+        },
+        "request": {
+          "diagnosis": "M45.9",
+          "diagnosis_category": "Musculoskeletal",
+          "plan_type": "PPO",
+          "deductible": 1000.0,
+          "coinsurance": 20.0,
+          "out_of_pocket_max": 5000.0,
+          "member_months": 12,
+          "prior_denials": 0,
+          "prior_therapies": [],
+          "hba1c": null,
+          "bmi": null,
+          "ldl": null
+        },
+        "service": {
+          "service_type": "medication",
+          "service_name": "Atorvastatin",
+          "service_code": "M45.9",
+          "tier": 1,
+          "requires_pa": false,
+          "is_high_cost": false,
+          "step_therapy": false,
+          "qty_limit": false,
+          "copay": 10.0,
+          "estimated_cost": 50.0
+        }
+      },
+      "expected_output": {
+        "approval_status": "Approved",
+        "rule_reason": "Low-risk, low-tier service",
+        "appeal_recommended": false,
+        "appeal_confidence": 0.3,
+        "appeal_risk": "Low"
+      }
+    },
+
+    "scenario_2_denied_no_appeal": {
+      "description": "Medium-risk patient requesting high-tier service - should be DENIED with no appeal",
+      "input": {
+        "patient": {
+          "patient_id": "P002", 
+          "patient_name": "Jane Doe",
+          "age": 52,
+          "gender": "F",
+          "state": "NY",
+          "risk_score": 0.6
+        },
+        "request": {
+          "diagnosis": "M79.3",
+          "diagnosis_category": "Musculoskeletal",
+          "plan_type": "HMO",
+          "deductible": 2000.0,
+          "coinsurance": 15.0,
+          "out_of_pocket_max": 6000.0,
+          "member_months": 12,
+          "prior_denials": 0,
+          "prior_therapies": [],
+          "hba1c": null,
+          "bmi": null,
+          "ldl": null
+        },
+        "service": {
+          "service_type": "medication",
+          "service_name": "Semaglutide",
+          "service_code": "M79.3",
+          "tier": 3,
+          "requires_pa": true,
+          "is_high_cost": true,
+          "step_therapy": true,
+          "qty_limit": false,
+          "copay": 50.0,
+          "estimated_cost": 800.0
+        }
+      },
+      "expected_output": {
+        "approval_status": "Needs Docs",
+        "rule_reason": "Step therapy required before approval",
+        "appeal_recommended": false,
+        "appeal_confidence": 0.4,
+        "appeal_risk": "Low"
+      }
+    },
+
+    "scenario_3_denied_with_appeal": {
+      "description": "Medium-risk patient requesting Tirzepatide for diabetes - should be DENIED with HIGH appeal risk",
+      "input": {
+        "patient": {
+          "patient_id": "P003",
+          "patient_name": "Robert Johnson", 
+          "age": 35,
+          "gender": "M",
+          "state": "TX",
+          "risk_score": 0.4
+        },
+        "request": {
+          "diagnosis": "E11.9",
+          "diagnosis_category": "Endocrine",
+          "plan_type": "PPO",
+          "deductible": 1500.0,
+          "coinsurance": 25.0,
+          "out_of_pocket_max": 4000.0,
+          "member_months": 12,
+          "prior_denials": 1,
+          "prior_therapies": ["Metformin"],
+          "hba1c": 8.2,
+          "bmi": 32.5,
+          "ldl": 145.0
+        },
+        "service": {
+          "service_type": "medication",
+          "service_name": "Tirzepatide",
+          "service_code": "E11.9",
+          "tier": 3,
+          "requires_pa": true,
+          "is_high_cost": true,
+          "step_therapy": true,
+          "qty_limit": false,
+          "copay": 75.0,
+          "estimated_cost": 1200.0
+        }
+      },
+      "expected_output": {
+        "approval_status": "Denied",
+        "rule_reason": "Service not medically necessary under plan criteria",
+        "appeal_recommended": true,
+        "appeal_confidence": 0.85,
+        "appeal_risk": "High"
+      }
+    },
+
+    "scenario_4_imaging_approved": {
+      "description": "Low-risk patient requesting standard imaging - should be APPROVED",
+      "input": {
+        "patient": {
+          "patient_id": "P004",
+          "patient_name": "Sarah Wilson",
+          "age": 38,
+          "gender": "F", 
+          "state": "FL",
+          "risk_score": 0.2
+        },
+        "request": {
+          "diagnosis": "S72.001A",
+          "diagnosis_category": "Injury",
+          "plan_type": "PPO",
+          "deductible": 1000.0,
+          "coinsurance": 20.0,
+          "out_of_pocket_max": 3000.0,
+          "member_months": 12,
+          "prior_denials": 0,
+          "prior_therapies": [],
+          "hba1c": null,
+          "bmi": null,
+          "ldl": null
+        },
+        "service": {
+          "service_type": "imaging",
+          "service_name": "X-Ray Hip",
+          "service_code": "S72.001A",
+          "tier": 1,
+          "requires_pa": false,
+          "is_high_cost": false,
+          "step_therapy": false,
+          "qty_limit": false,
+          "copay": 25.0,
+          "estimated_cost": 150.0
+        }
+      },
+      "expected_output": {
+        "approval_status": "Approved",
+        "rule_reason": "Low-risk, low-tier service",
+        "appeal_recommended": false,
+        "appeal_confidence": 0.2,
+        "appeal_risk": "Low"
+      }
+    },
+
+    "scenario_5_procedure_denied_with_appeal": {
+      "description": "High-risk patient requesting high-tier procedure - should be DENIED with MEDIUM appeal risk",
+      "input": {
+        "patient": {
+          "patient_id": "P005",
+          "patient_name": "Michael Brown",
+          "age": 33,
+          "gender": "F",
+          "state": "CA", 
+          "risk_score": 0.4
+        },
+        "request": {
+          "diagnosis": "L40.0",
+          "diagnosis_category": "Dermatology",
+          "plan_type": "HMO",
+          "deductible": 2500.0,
+          "coinsurance": 30.0,
+          "out_of_pocket_max": 7000.0,
+          "member_months": 12,
+          "prior_denials": 0,
+          "prior_therapies": ["Topical Steroids"],
+          "hba1c": null,
+          "bmi": null,
+          "ldl": null
+        },
+        "service": {
+          "service_type": "procedure",
+          "service_name": "Secukinumab",
+          "service_code": "L40.0",
+          "tier": 5,
+          "requires_pa": true,
+          "is_high_cost": true,
+          "step_therapy": true,
+          "qty_limit": false,
+          "copay": 100.0,
+          "estimated_cost": 5000.0
+        }
+      },
+      "expected_output": {
+        "approval_status": "Denied",
+        "rule_reason": "Service not medically necessary under plan criteria",
+        "appeal_recommended": true,
+        "appeal_confidence": 0.65,
+        "appeal_risk": "Medium"
+      }
+    },
+
+    "scenario_6_dme_approved": {
+      "description": "Elderly low-risk patient requesting standard DME - should be APPROVED",
+      "input": {
+        "patient": {
+          "patient_id": "P006",
+          "patient_name": "William Davis",
+          "age": 72,
+          "gender": "M",
+          "state": "NY",
+          "risk_score": 0.3
+        },
+        "request": {
+          "diagnosis": "M25.561",
+          "diagnosis_category": "Musculoskeletal",
+          "plan_type": "PPO",
+          "deductible": 800.0,
+          "coinsurance": 15.0,
+          "out_of_pocket_max": 2500.0,
+          "member_months": 12,
+          "prior_denials": 0,
+          "prior_therapies": [],
+          "hba1c": null,
+          "bmi": null,
+          "ldl": null
+        },
+        "service": {
+          "service_type": "dme",
+          "service_name": "Standard Wheelchair",
+          "service_code": "M25.561",
+          "tier": 1,
+          "requires_pa": false,
+          "is_high_cost": false,
+          "step_therapy": false,
+          "qty_limit": false,
+          "copay": 20.0,
+          "estimated_cost": 300.0
+        }
+      },
+      "expected_output": {
+        "approval_status": "Approved",
+        "rule_reason": "Low-risk, low-tier service",
+        "appeal_recommended": false,
+        "appeal_confidence": 0.5,
+        "appeal_risk": "Low"
+      }
+    },
+
+    "scenario_7_emergency_approved": {
+      "description": "Emergency service - should be APPROVED regardless of other factors",
+      "input": {
+        "patient": {
+          "patient_id": "P007",
+          "patient_name": "Emily Garcia",
+          "age": 29,
+          "gender": "F",
+          "state": "TX",
+          "risk_score": 0.2
+        },
+        "request": {
+          "diagnosis": "I21.9",
+          "diagnosis_category": "Cardiovascular",
+          "plan_type": "PPO",
+          "deductible": 2000.0,
+          "coinsurance": 20.0,
+          "out_of_pocket_max": 5000.0,
+          "member_months": 12,
+          "prior_denials": 0,
+          "prior_therapies": [],
+          "hba1c": null,
+          "bmi": null,
+          "ldl": null
+        },
+        "service": {
+          "service_type": "procedure",
+          "service_name": "Emergency Cardiac Catheterization",
+          "service_code": "I21.9",
+          "tier": 6,
+          "requires_pa": false,
+          "is_high_cost": true,
+          "step_therapy": false,
+          "qty_limit": false,
+          "copay": 0.0,
+          "estimated_cost": 15000.0
+        }
+      },
+      "expected_output": {
+        "approval_status": "Approved",
+        "rule_reason": "Emergency/urgent service auto-approved",
+        "appeal_recommended": false,
+        "appeal_confidence": 0.1,
+        "appeal_risk": "Low"
+      }
+    },
+
+    "scenario_8_high_risk_high_cost_needs_docs": {
+      "description": "High-risk patient requesting high-cost service - should be NEEDS DOCS",
+      "input": {
+        "patient": {
+          "patient_id": "P008",
+          "patient_name": "David Martinez",
+          "age": 68,
+          "gender": "M",
+          "state": "CA",
+          "risk_score": 0.8
+        },
+        "request": {
+          "diagnosis": "E78.5",
+          "diagnosis_category": "Endocrine",
+          "plan_type": "PPO",
+          "deductible": 3000.0,
+          "coinsurance": 25.0,
+          "out_of_pocket_max": 8000.0,
+          "member_months": 12,
+          "prior_denials": 0,
+          "prior_therapies": ["Statins"],
+          "hba1c": 7.5,
+          "bmi": 28.0,
+          "ldl": 180.0
+        },
+        "service": {
+          "service_type": "medication",
+          "service_name": "Evolocumab",
+          "service_code": "E78.5",
+          "tier": 4,
+          "requires_pa": true,
+          "is_high_cost": true,
+          "step_therapy": false,
+          "qty_limit": false,
+          "copay": 150.0,
+          "estimated_cost": 2000.0
+        }
+      },
+      "expected_output": {
+        "approval_status": "Needs Docs",
+        "rule_reason": "High-cost service for high-risk member. Need docs.",
+        "appeal_recommended": false,
+        "appeal_confidence": 0.7,
+        "appeal_risk": "High"
+      }
+    }
+  },
+
+  "api_usage_examples": {
+    "submit_request": {
+      "endpoint": "POST /requests",
+      "description": "Submit a new service request",
+      "example": {
+        "patient": {
+          "patient_id": "P001",
+          "patient_name": "John Smith",
+          "age": 45,
+          "gender": "M",
+          "state": "CA",
+          "risk_score": 0.3
+        },
+        "request": {
+          "diagnosis": "M45.9",
+          "plan_type": "PPO",
+          "deductible": 1000.0,
+          "coinsurance": 20.0,
+          "prior_denials": 0
+        },
+        "service": {
+          "service_type": "medication",
+          "service_name": "Atorvastatin",
+          "tier": 1,
+          "requires_pa": false,
+          "is_high_cost": false,
+          "estimated_cost": 50.0
+        }
+      }
+    },
+    "predict_appeal": {
+      "endpoint": "POST /appeals-predict",
+      "description": "Get ML appeal prediction for a request",
+      "example": {
+        "item_id": "I1234567890"
+      }
+    },
+    "submit_appeal": {
+      "endpoint": "POST /appeals",
+      "description": "Submit an appeal for a denied request",
+      "example": {
+        "item_id": "I1234567890",
+        "appeal_notes": "Patient has tried multiple therapies without success. Additional clinical justification provided."
+      }
+    }
+  }
+}
+
+
+
+
