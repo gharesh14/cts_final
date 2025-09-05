@@ -548,6 +548,28 @@ body {
     color: white;
 }
 
+.appeal-btn {
+    background: #ffc107;
+    color: #212529;
+    font-weight: 600;
+}
+
+.appeal-btn:hover {
+    background: #e0a800;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3);
+}
+
+.status-pending {
+    background: #ffc107;
+    color: #212529;
+}
+
+.status-reviewing {
+    background: #17a2b8;
+    color: white;
+}
+
 .file-appeal-btn:hover {
     background: #c82333;
 }

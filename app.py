@@ -2281,6 +2281,150 @@ def get_doctor_appeals(doctor_id):
         print(f"Error fetching doctor appeals: {str(e)}")
         return jsonify({"error": "Failed to fetch doctor appeals"}), 500
 
+@app.route('/api/doctor-appeals', methods=['GET'])
+def get_doctor_appeals_detailed():
+    """
+    Returns detailed appeals for doctors from the Appeal table with full status information.
+    """
+    try:
+        # Get all appeals with their related data
+        appeals = db.session.query(Appeal).join(ServiceRequested, Appeal.item_id == ServiceRequested.item_id)\
+            .join(Request, ServiceRequested.request_id == Request.request_id)\
+            .join(Patient, Request.patient_id == Patient.patient_id)\
+            .order_by(Appeal.timestamp.desc()).all()
+        
+        results = []
+        for appeal in appeals:
+            # Get the service request
+            service = db.session.get(ServiceRequested, appeal.item_id)
+            request = db.session.get(Request, service.request_id) if service else None
+            patient = db.session.get(Patient, request.patient_id) if request else None
+            
+            results.append({
+                "appeal_id": appeal.appeal_id,
+                "request_id": request.request_id if request else 'N/A',
+                "patient_id": patient.patient_id if patient else 'N/A',
+                "patient_name": patient.patient_name if patient else 'N/A',
+                "service_name": service.service_name if service else 'N/A',
+                "service_type": service.service_type if service else 'N/A',
+                "originalStatus": service.approval_status if service else 'Denied',
+                "appeal_status": appeal.appeal_status,
+                "appeal_outcome": appeal.appeal_outcome,
+                "appeal_reason": appeal.appeal_reason,
+                "appeal_documents": appeal.appeal_documents,
+                "admin_notes": appeal.admin_notes,
+                "created_at": appeal.timestamp.strftime("%Y-%m-%d %H:%M") if appeal.timestamp else 'N/A',
+                "reviewed_at": appeal.reviewed_at.strftime("%Y-%m-%d %H:%M") if appeal.reviewed_at else None,
+                "reviewer_id": appeal.reviewer_id,
+                "appealLevelPercentage": f"{(service.appeal_confidence * 100):.1f}%" if service and service.appeal_confidence else "0.0%"
+            })
+        
+        return jsonify({"appeals": results})
+    except Exception as e:
+        print(f"Error fetching detailed doctor appeals: {str(e)}")
+        return jsonify({"error": "Failed to fetch doctor appeals"}), 500
+
+@app.route('/api/admin-appeals', methods=['GET'])
+def get_admin_appeals():
+    """
+    Returns detailed appeals for admin dashboard with full status information.
+    """
+    try:
+        # Get all appeals with their related data
+        appeals = db.session.query(Appeal).join(ServiceRequested, Appeal.item_id == ServiceRequested.item_id)\
+            .join(Request, ServiceRequested.request_id == Request.request_id)\
+            .join(Patient, Request.patient_id == Patient.patient_id)\
+            .order_by(Appeal.timestamp.desc()).all()
+        
+        results = []
+        for appeal in appeals:
+            # Get the service request
+            service = db.session.get(ServiceRequested, appeal.item_id)
+            request = db.session.get(Request, service.request_id) if service else None
+            patient = db.session.get(Patient, request.patient_id) if request else None
+            
+            results.append({
+                "appeal_id": appeal.appeal_id,
+                "request_id": request.request_id if request else 'N/A',
+                "patient_id": patient.patient_id if patient else 'N/A',
+                "patient_name": patient.patient_name if patient else 'N/A',
+                "service_name": service.service_name if service else 'N/A',
+                "service_type": service.service_type if service else 'N/A',
+                "originalStatus": service.approval_status if service else 'Denied',
+                "appeal_status": appeal.appeal_status,
+                "appeal_outcome": appeal.appeal_outcome,
+                "appeal_reason": appeal.appeal_reason,
+                "appeal_documents": appeal.appeal_documents,
+                "admin_notes": appeal.admin_notes,
+                "created_at": appeal.timestamp.strftime("%Y-%m-%d %H:%M") if appeal.timestamp else 'N/A',
+                "reviewed_at": appeal.reviewed_at.strftime("%Y-%m-%d %H:%M") if appeal.reviewed_at else None,
+                "reviewer_id": appeal.reviewer_id,
+                "appealLevelPercentage": f"{(service.appeal_confidence * 100):.1f}%" if service and service.appeal_confidence else "0.0%"
+            })
+        
+        return jsonify({"appeals": results})
+    except Exception as e:
+        print(f"Error fetching admin appeals: {str(e)}")
+        return jsonify({"error": "Failed to fetch admin appeals"}), 500
+
+@app.route('/api/admin-appeals/<appeal_id>/decision', methods=['POST'])
+def update_appeal_decision_admin(appeal_id):
+    """
+    Admin can approve or deny an appeal.
+    """
+    try:
+        data = request.get_json()
+        decision = data.get("decision")  # "Approved" or "Denied"
+        admin_notes = data.get("admin_notes", "")
+        
+        if decision not in ["Approved", "Denied"]:
+            return jsonify({"error": "Invalid decision. Must be 'Approved' or 'Denied'"}), 400
+        
+        appeal = db.session.get(Appeal, appeal_id)
+        if not appeal:
+            return jsonify({"error": "Appeal not found"}), 404
+        
+        # Update appeal
+        appeal.appeal_outcome = decision
+        appeal.appeal_status = "Completed"
+        appeal.admin_notes = admin_notes
+        appeal.reviewed_at = datetime.datetime.utcnow()
+        appeal.reviewer_id = "admin"  # In a real system, this would be the actual admin ID
+        
+        # If approved, update the original service request status
+        if decision == "Approved":
+            service = db.session.get(ServiceRequested, appeal.item_id)
+            if service:
+                service.approval_status = "Approved"
+                # Update the request status as well
+                request = db.session.get(Request, service.request_id)
+                if request:
+                    # Check if all services in this request are now approved
+                    all_services = ServiceRequested.query.filter_by(request_id=request.request_id).all()
+                    if all(s.approval_status == "Approved" for s in all_services):
+                        request.status = "Approved"
+        
+        db.session.commit()
+        
+        # Emit real-time update
+        socketio.emit('appeal_decision_updated', {
+            "appeal_id": appeal_id,
+            "decision": decision,
+            "admin_notes": admin_notes,
+            "reviewed_at": appeal.reviewed_at.strftime("%Y-%m-%d %H:%M")
+        })
+        
+        return jsonify({
+            "status": "success",
+            "decision": decision,
+            "admin_notes": admin_notes,
+            "reviewed_at": appeal.reviewed_at.strftime("%Y-%m-%d %H:%M")
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating appeal decision: {str(e)}")
+        return jsonify({"error": "Failed to update appeal decision"}), 500
 
 @app.route("/api/rule-engine/<item_id>", methods=["POST"])
 def run_rule_engine_for_admin(item_id):
@@ -2396,16 +2540,40 @@ def submit_appeal():
             "coinsurance": req.coinsurance,
         }
 
-        # Run ML prediction for appeal success
-        print(f"Running ML prediction for appeal submission on item {item_id} (service_type: {service.service_type})")
-        should_appeal, confidence, risk_level = predict_appeal_risk(service_dict, patient_dict, request_dict)
-        appeal_level = predict_appeal_level(service_dict, patient_dict, request_dict)
+        # Decide appeal eligibility using existing score first, then ML, then heuristic fallback
+        prior_score_pct = int(round((service.appeal_confidence or 0) * 100)) if service.appeal_confidence is not None else 0
+        should_appeal = None
+        confidence = None
+        risk_level = None
+        appeal_level = None
 
-        # Check if appeal is allowed (threshold: 60%)
-        if appeal_level < 60.0:
+        # If frontend already showed the Appeal button (>=80), trust previously computed score
+        if prior_score_pct >= 80:
+            should_appeal = True
+            confidence = float(service.appeal_confidence)
+            risk_level = service.appeal_risk or "High"
+            appeal_level = float(prior_score_pct)
+        else:
+            # Try ML prediction first
+            try:
+                print(f"Running ML prediction for appeal submission on item {item_id} (service_type: {service.service_type})")
+                should_appeal, confidence, risk_level = predict_appeal_risk(service_dict, patient_dict, request_dict)
+                appeal_level = predict_appeal_level(service_dict, patient_dict, request_dict)
+            except Exception as _ml_err:
+                # Fall back to heuristic rule if ML unavailable
+                print(f"Warning: ML prediction failed for appeals, using fallback. Error: {_ml_err}")
+                should_appeal, confidence, risk_level = fallback_appeal_prediction(service_dict, patient_dict, request_dict)
+                try:
+                    # Derive % from confidence when using fallback
+                    appeal_level = float(int(round((confidence or 0) * 100)))
+                except Exception:
+                    appeal_level = 0.0
+
+        # Enforce server-side threshold only if we didn't already trust a prior >=80 score
+        if prior_score_pct < 80 and float(appeal_level) < 80.0:
             return jsonify({
                 "error": "Appeal not allowed",
-                "message": f"Appeal success probability is {appeal_level:.1f}%, which is below the 60% threshold required for appeals.",
+                "message": f"Appeal success probability is {appeal_level:.1f}%, which is below the 80% threshold required for appeals.",
                 "ml_prediction": {
                     "appeal_level": appeal_level,
                     "confidence": confidence,

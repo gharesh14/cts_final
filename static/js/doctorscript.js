@@ -68,6 +68,14 @@ function connectToSocket() {
         console.log('Document uploaded:', data);
         showNotification(`Document uploaded: ${data.file_name}`, 'success');
     });
+
+    // Listen for appeal decision updates
+    socket.on('appeal_decision_updated', function (data) {
+        console.log('Appeal decision updated:', data);
+        showNotification(`Your appeal ${data.appeal_id} has been ${data.decision.toLowerCase()}`, 'info');
+        // Refresh appeals table
+        loadAppealedRequests();
+    });
 }
 
 // Dashboard initialization
@@ -179,6 +187,8 @@ function loadTabData(tabName) {
 function loadInitialData() {
     fetchRequestsFromBackend();
     loadAppealedRequests();
+    // Mark initial load as complete
+    window.initialLoadComplete = true;
 }
 
 // Fetch requests from backend and populate the table
@@ -230,7 +240,7 @@ function loadRequestsTable(requests) {
 // Load appealed requests for the appeals tab
 async function loadAppealedRequests() {
     try {
-        const response = await fetch('/appeals/doctor123'); // Using placeholder doctor ID
+        const response = await fetch('/api/doctor-appeals'); // Updated endpoint
         if (!response.ok) {
             throw new Error('Failed to fetch appealed requests');
         }
@@ -239,7 +249,12 @@ async function loadAppealedRequests() {
         loadAppealsTable(data.appeals || []);
     } catch (error) {
         console.error('Error fetching appealed requests:', error);
-        showNotification('Failed to load appealed requests. Please try again later.', 'error');
+        // Don't show error notification on initial load, just log it
+        if (window.initialLoadComplete) {
+            showNotification('Failed to load appealed requests. Please try again later.', 'error');
+        }
+        // Load empty table on error
+        loadAppealsTable([]);
     }
 }
 
@@ -247,6 +262,9 @@ async function loadAppealedRequests() {
 function loadAppealsTable(appeals) {
     const tbody = document.getElementById('appeals-tbody');
     if (!tbody || !appeals) return;
+
+    // Store appeals globally for access by other functions
+    window.allAppeals = appeals;
 
     tbody.innerHTML = '';
 
@@ -277,28 +295,48 @@ function createAppealRow(appeal) {
 
     const appealLevel = appeal.appealLevelPercentage || '0.0%';
     const originalStatus = appeal.originalStatus || 'Denied';
+    const appealStatus = appeal.appeal_status || 'Submitted';
+    const appealOutcome = appeal.appeal_outcome || 'Pending';
+
+    // Determine status styling
+    let statusClass = 'status-pending';
+    let statusText = appealStatus;
+    
+    if (appealOutcome === 'Approved') {
+        statusClass = 'status-approved';
+        statusText = 'Approved';
+    } else if (appealOutcome === 'Denied') {
+        statusClass = 'status-denied';
+        statusText = 'Denied';
+    } else if (appealStatus === 'Under Review') {
+        statusClass = 'status-reviewing';
+        statusText = 'Under Review';
+    }
 
     row.innerHTML = `
-        <td><strong>${appeal.id || appeal.requestId}</strong></td>
+        <td><strong>${appeal.appeal_id || appeal.id || appeal.requestId}</strong></td>
         <td>
             <div class="patient-info">
-                <strong>${appeal.patientId || 'N/A'}</strong><br>
-                <small>Request: ${appeal.requestId}</small>
+                <strong>${appeal.patient_name || appeal.patientId || 'N/A'}</strong><br>
+                <small>Request: ${appeal.request_id || appeal.requestId}</small>
             </div>
         </td>
         <td>
             <div class="service-info">
-                <strong>${appeal.service || 'N/A'}</strong>
+                <strong>${appeal.service_name || appeal.service || 'N/A'}</strong>
             </div>
         </td>
         <td>${originalStatus}</td>
         <td>
             <span class="confidence-score">${appealLevel}</span>
         </td>
-        <td>${appeal.createdAt || ''}</td>
+        <td>
+            <span class="status-chip ${statusClass}">${statusText}</span>
+        </td>
+        <td>${appeal.created_at || appeal.createdAt || ''}</td>
         <td>
             <div class="action-buttons">
-                <button class="btn btn-secondary btn-sm" onclick="viewDetails('${appeal.requestId}')">
+                <button class="btn btn-secondary btn-sm" onclick="viewAppealDetails('${appeal.appeal_id || appeal.id}')">
                     <i class="fas fa-eye"></i> View
                 </button>
             </div>
@@ -351,6 +389,121 @@ function viewDetails(itemId) {
         showRequestDetailsModal(request);
     } else {
         showNotification('Request details not found', 'error');
+    }
+}
+
+// View details of an appeal
+function viewAppealDetails(appealId) {
+    // Find the appeal in the appeals array
+    const appeal = window.allAppeals?.find(a => a.appeal_id === appealId || a.id === appealId);
+    if (appeal) {
+        showAppealDetailsModal(appeal);
+    } else {
+        showNotification('Appeal details not found', 'error');
+    }
+}
+
+// Show appeal details modal
+function showAppealDetailsModal(appeal) {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('appeal-details-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'appeal-details-modal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Appeal Details</h3>
+                    <span class="close" onclick="closeAppealDetailsModal()">&times;</span>
+                </div>
+                <div class="modal-body" id="appeal-details-body">
+                    <!-- Content will be populated here -->
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    // Populate modal content
+    const modalBody = document.getElementById('appeal-details-body');
+    modalBody.innerHTML = `
+        <div class="appeal-details">
+            <div class="detail-row">
+                <label>Appeal ID:</label>
+                <span>${appeal.appeal_id || appeal.id}</span>
+            </div>
+            <div class="detail-row">
+                <label>Request ID:</label>
+                <span>${appeal.request_id || appeal.requestId}</span>
+            </div>
+            <div class="detail-row">
+                <label>Patient:</label>
+                <span>${appeal.patient_name || appeal.patientId}</span>
+            </div>
+            <div class="detail-row">
+                <label>Service:</label>
+                <span>${appeal.service_name || appeal.service}</span>
+            </div>
+            <div class="detail-row">
+                <label>Original Status:</label>
+                <span>${appeal.originalStatus || 'Denied'}</span>
+            </div>
+            <div class="detail-row">
+                <label>Appeal Status:</label>
+                <span class="status-chip ${getAppealStatusClass(appeal)}">${appeal.appeal_status || 'Submitted'}</span>
+            </div>
+            <div class="detail-row">
+                <label>Appeal Outcome:</label>
+                <span class="status-chip ${getAppealOutcomeClass(appeal)}">${appeal.appeal_outcome || 'Pending'}</span>
+            </div>
+            <div class="detail-row">
+                <label>Appeal Reason:</label>
+                <div class="reason-text">${appeal.appeal_reason || 'No reason provided'}</div>
+            </div>
+            <div class="detail-row">
+                <label>Submitted:</label>
+                <span>${appeal.created_at || appeal.createdAt || 'Unknown'}</span>
+            </div>
+            ${appeal.admin_notes ? `
+                <div class="detail-row">
+                    <label>Admin Notes:</label>
+                    <div class="admin-notes">${appeal.admin_notes}</div>
+                </div>
+            ` : ''}
+        </div>
+    `;
+
+    modal.style.display = 'block';
+}
+
+// Get appeal status CSS class
+function getAppealStatusClass(appeal) {
+    const status = appeal.appeal_status || 'Submitted';
+    switch (status) {
+        case 'Submitted': return 'status-pending';
+        case 'Under Review': return 'status-reviewing';
+        case 'Completed': return 'status-approved';
+        default: return 'status-pending';
+    }
+}
+
+// Get appeal outcome CSS class
+function getAppealOutcomeClass(appeal) {
+    const outcome = appeal.appeal_outcome || 'Pending';
+    switch (outcome) {
+        case 'Approved': return 'status-approved';
+        case 'Denied': return 'status-denied';
+        case 'Pending': return 'status-pending';
+        default: return 'status-pending';
+    }
+}
+
+// Close appeal details modal
+function closeAppealDetailsModal() {
+    const modal = document.getElementById('appeal-details-modal');
+    if (modal) {
+        modal.style.display = 'none';
     }
 }
 
@@ -428,7 +581,7 @@ function createRequestRow(request) {
 
 // Decide appeal action rendering based on backend prediction
 function getAppealActionHtml(request) {
-    // Show message based on 80% appeal threshold. No button.
+    // Show button based on 80% appeal threshold
     let score;
     if (typeof request.appeal_level === 'number') {
         score = request.appeal_level;
@@ -438,9 +591,15 @@ function getAppealActionHtml(request) {
         const m = request.appealLevelPercentage.match(/([0-9]+\.?[0-9]*)%/);
         if (m) score = Math.round(parseFloat(m[1]));
     }
+    
     if (typeof score === 'number' && score >= 80) {
-        return `<span>You can appeal this request again. (Score: ${score}%)</span>`;
+        return `
+            <button class="action-btn appeal-btn" onclick="openAppealModal('${request.itemId}')" title="Appeal this request (Score: ${score}%)">
+                <i class="fas fa-gavel"></i> Appeal
+            </button>
+        `;
     }
+    
     const msg = 'You cannot appeal for the request because probability of changing the result is low';
     return `<span class="text-muted" title="${msg}">${msg}${typeof score === 'number' ? ` (Score: ${score}%)` : ''}</span>`;
 }
@@ -462,7 +621,7 @@ async function loadAppealsList() {
     if (!appealsList) return;
 
     try {
-        const response = await fetch('/api/appeals');
+        const response = await fetch('/api/doctor-appeals');
         if (!response.ok) throw new Error('Failed to fetch appeals');
         const data = await response.json();
 
@@ -478,14 +637,15 @@ async function loadAppealsList() {
             appealItem.innerHTML = `
                 <div class="appeal-header">
                     <div class="appeal-info">
-                        <h4>Appeal for Request ${appeal.requestId}</h4>
-                        <p>Service: ${appeal.service}</p>
+                        <h4>Appeal for Request ${appeal.request_id}</h4>
+                        <p>Service: ${appeal.service_name}</p>
                     </div>
                     <span class="appeal-status">${appeal.appealLevelPercentage}</span>
                 </div>
                 <div class="appeal-details">
                     <p><strong>Original Status:</strong> ${appeal.originalStatus}</p>
-                    <p><strong>Created:</strong> ${appeal.createdAt}</p>
+                    <p><strong>Appeal Status:</strong> ${appeal.appeal_status || 'Submitted'}</p>
+                    <p><strong>Created:</strong> ${appeal.created_at}</p>
                 </div>
             `;
             appealsList.appendChild(appealItem);
@@ -1155,3 +1315,5 @@ window.filterRequests = filterRequests;
 window.exportRequests = exportRequests;
 window.updateServiceNamePlaceholder = updateServiceNamePlaceholder;
 window.resetForm = resetForm;
+window.viewAppealDetails = viewAppealDetails;
+window.closeAppealDetailsModal = closeAppealDetailsModal;
