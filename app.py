@@ -2568,7 +2568,6 @@ def submit_appeal():
                     appeal_level = float(int(round((confidence or 0) * 100)))
                 except Exception:
                     appeal_level = 0.0
-
         # Enforce server-side threshold only if we didn't already trust a prior >=80 score
         if prior_score_pct < 80 and float(appeal_level) < 80.0:
             return jsonify({
@@ -2580,7 +2579,7 @@ def submit_appeal():
                     "risk_level": risk_level
                 }
             }), 400
-
+        print("inga 1")
         # Create appeal record
         appeal = Appeal(
             appeal_id=f"A{uuid.uuid4().hex[:10].upper()}",
