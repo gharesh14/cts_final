@@ -3128,4 +3128,4 @@ if __name__ == "__main__":
             db.session.add(
                 User(username='Jennifer Martinez', email='admin@example.com', password='password', role='admin'))
         db.session.commit()
-        app.run(host="0.0.0.0", port=port)
+        socketio.run(app,host="0.0.0.0", port=port)
