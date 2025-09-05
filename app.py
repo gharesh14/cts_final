@@ -3117,6 +3117,8 @@ def handle_disconnect():
 # Run
 # ------------------------------
 if __name__ == "__main__":
+    import os
+    port = int(os.environ.get("PORT", 5000))
     with app.app_context():
         db.create_all()
         if not User.query.filter_by(email='doctor@example.com').first():
@@ -3126,4 +3128,4 @@ if __name__ == "__main__":
             db.session.add(
                 User(username='Jennifer Martinez', email='admin@example.com', password='password', role='admin'))
         db.session.commit()
-        socketio.run(app, host='127.0.0.1', port=5001, debug=True, allow_unsafe_werkzeug=True)
+        socketio.run(app, host='127.0.0.1', port=port, debug=True, allow_unsafe_werkzeug=True)
