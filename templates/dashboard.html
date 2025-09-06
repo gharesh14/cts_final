@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,14 +14,15 @@
     <header class="header">
         <div class="container">
             <div class="nav-left">
-                <div class="logo" style="display:flex;align-items:center;gap:10px;">
-                    <img src="{{ url_for('static', filename='img/insurx-logo.png') }}" alt="InsuRx" style="height:36px;object-fit:contain;display:block;"/>
-                
-                </div>
+            <div class="logo">
+                <img src="{{ url_for('static', filename='img/insurx-logo.png') }}" alt="InsuRx">
+                <span class="logo-text">InsuRx</span>
+            </div>
+
             </div>
             <nav class="nav-right">
-                <a href="#about" class="nav-link">About</a>
-                <a href="#contact" class="nav-link">Contact</a>
+                <a href="#aboutus" class="nav-link">About</a>
+                <a href="#contactus" class="nav-link">Contact</a>
             </nav>
         </div>
     </header>
@@ -36,12 +38,13 @@
                     <div class="cta-buttons">
                         <button class="btn btn-primary doctor-login" onclick="showLoginModal('doctor')">
                             <i class="fas fa-user-md"></i>
-                            Doctor Login
+                            Provider
                         </button>
                         <button class="btn btn-secondary admin-login" onclick="showLoginModal('admin')">
-                            <i class="fas fa-user-shield"></i>
-                            Insurance Admin Login
+                           &nbsp; <i class="fas fa-user-shield"></i>
+                           Payer&nbsp;&nbsp;&nbsp;
                         </button>
+                        
                     </div>
                 </div>
                 
@@ -103,6 +106,52 @@
             </div>
         </div>
     </section>
+
+
+    <section id="aboutus"class="aboutus">
+    <h2>About Our Project</h2>
+    
+    <p>
+        Healthcare providers and patients often face frustrating delays due to manual prior authorization processes for medical procedures and prescriptions. These delays affect nearly 94% of physicians, leading to treatment interruptions and costing the healthcare system over $31 billion annually in administrative overhead.</p>
+    
+    <ul class="about-list">
+        <li>Instantly process 90%+ of prior authorization requests</li>
+        <li>Deliver decisions with 95%+ accuracy</li>
+        <li>Maintain complete audit trails for transparency and compliance</li>
+    </ul>
+    
+  
+</section>
+
+
+<!--Contact us-->
+<section id="contactus" class="contactus">
+  <h2>Contact Us</h2>
+  <p class="subtitle">We’d love to hear from you! Reach us anytime using the details below.</p>
+  
+  <div class="contact-grid">
+    <div class="contact-item">
+      <i class="fas fa-map-marker-alt"></i>
+      <h3>Address</h3>
+      <p>27 13 Lowe Haven</p>
+    </div>
+    
+    <div class="contact-item">
+      <i class="fas fa-phone-alt"></i>
+      <h3>Phone</h3>
+      <p>+1 111 343 4343</p>
+    </div>
+    
+    <div class="contact-item">
+      <i class="fas fa-envelope"></i>
+      <h3>Email</h3>
+      <p>business@info.com</p>
+    </div>
+  </div>
+</section>
+
+
+
 
     <!-- Footer -->
     <footer class="footer">

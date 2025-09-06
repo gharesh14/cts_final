@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -14,15 +15,43 @@
         <div class="header-content">
             <div class="app-info">
                 <div class="app-icon" style="background:transparent;border:none;box-shadow:none;">
-                    <img src="{{ url_for('static', filename='img/insurx-logo.png') }}" alt="InsuRx" style="height:36px;object-fit:contain;display:block;"/>
+                    <img src="{{ url_for('static', filename='img/insurx-logo.png') }}" alt="InsuRx" style="height:45px;object-fit:contain;display:block;"/>
                 </div>
                 <div class="app-details"></div>
             </div>
-            <div class="profile-actions">
+            <!-- <div class="profile-actions">
                 <button class="profile-btn" onclick="showProfileModal()" aria-label="Profile">
-                    <i class="fas fa-user-circle"></i>
+                   <i class="fa-regular fa-user" style="font-size: 20px;"></i>
                 </button>
+            </div> -->
+            <div class="profile-actions" style="position: relative;">
+            <button class="profile-btn" onclick="toggleDropdown()" aria-label="Profile">
+                <i class="fa-regular fa-user" style="font-size: 20px;"></i>
+            </button>
+
+            <!-- Dropdown -->
+            <div id="profileDropdown" class="dropdown-menu" style="display: none; position: absolute; right: 0; top: 40px; background: #fff; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); min-width: 150px; z-index: 100;">
+                <a href="#" onclick="showProfileModal()" style="display: block; padding: 10px; color: #333; text-decoration: none;">👤 Profile</a>
+                <a href="/logout" style="display: block; padding: 10px; color: #333; text-decoration: none;">🚪 Logout</a>
             </div>
+            </div>
+
+<script>
+function toggleDropdown() {
+  const dropdown = document.getElementById("profileDropdown");
+  dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+}
+
+// Close dropdown when clicking outside
+window.addEventListener("click", function(e) {
+  const profileBtn = document.querySelector(".profile-btn");
+  const dropdown = document.getElementById("profileDropdown");
+  if (!profileBtn.contains(e.target) && !dropdown.contains(e.target)) {
+    dropdown.style.display = "none";
+  }
+});
+</script>
+
         </div>
     </header>
 
@@ -246,6 +275,7 @@
                             <th>Status</th>
                             <th>Risk Level</th>
                             <th>Reason</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="requests-tbody">

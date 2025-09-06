@@ -205,7 +205,7 @@ async function fetchRequestsFromBackend() {
             itemId: r.itemId || r.id || r.requestId,
             requestId: r.requestId,
             patientId: r.patientId,
-            patientName: r.patientName,
+            patientName: r.patientName.toUpperCase(),
             diagnosis: r.diagnosis || r.diagnosisCode,
             status: r.overallStatus || r.status,
             ruleReason: r.ruleReason,
@@ -1292,6 +1292,8 @@ function updateServiceNamePlaceholder() {
         serviceNameInput.placeholder = 'Enter service name';
     }
 }
+
+
 
 // Global functions for HTML onclick handlers
 window.openUploadModal = openUploadModal;

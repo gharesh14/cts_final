@@ -4,6 +4,9 @@
     padding: 0;
     box-sizing: border-box;
 }
+html {
+  scroll-behavior: smooth;
+}
 
 body {
     font-family: 'Inter', sans-serif;
@@ -16,7 +19,7 @@ body {
 .container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 0 20px;
+    padding: 0 40px; /* adjusted to keep logo close but not pushed off */
 }
 
 /* Header Styles */
@@ -38,26 +41,33 @@ body {
     align-items: center;
 }
 
+/* Logo Section */
 .nav-left .logo {
     display: flex;
-    align-items: center;
-    gap: 12px;
+    align-items: center;  
+    gap: 10px;            
     font-weight: 600;
     color: #007BFF;
 }
 
-.nav-left .logo i {
-    font-size: 1.8rem;
-    color: #007BFF;
+.nav-left .logo img {
+    height: 40px;         
+    object-fit: contain;
+    display: block;       
 }
 
 .logo-text {
-    font-size: 1.2rem;
-    color: #333;
+    font-size: 1.4rem;    
+    font-weight: 700;
+    color: #0a1a3f;       
+    letter-spacing: 0.5px;
+    text-transform: uppercase; /* makes INSURX uppercase */
 }
 
+/* Nav Links */
 .nav-right {
     display: flex;
+    align-items: center;
     gap: 2rem;
 }
 
@@ -110,6 +120,7 @@ body {
     flex-wrap: wrap;
 }
 
+/* Buttons */
 .btn {
     display: inline-flex;
     align-items: center;
@@ -264,6 +275,106 @@ body {
     line-height: 1.6;
 }
 
+/* About Us Section */
+.aboutus {
+    scroll-margin-top: 80px;
+    padding: 40px 20px;
+    text-align: center;
+    background: linear-gradient(135deg, #ffffff 0%, #f0f8ff 100%);
+}
+
+.aboutus h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #0ea5a6;
+    margin-bottom: 2rem;
+}
+
+.aboutus p {
+    max-width: 900px;
+    margin: 0 auto 1rem auto;
+    text-align: justify;
+    font-size: 1.1rem;
+    line-height: 1.8;
+    color: #444;
+}
+
+.about-list {
+    max-width: 800px;
+    margin: 0 auto 0.5rem auto;
+    padding-left: 1.5rem;
+    text-align: left;
+    font-size: 1.1rem;
+    line-height: 1.8;
+    color: #333;
+    list-style: none;
+}
+
+.about-list li {
+    position: relative;
+    margin-bottom: 1rem;
+    padding-left: 1.5rem;
+}
+
+.about-list li::before {
+    content: "✔";
+    position: absolute;
+    left: 0;
+    color: #0ea5a6;
+    font-weight: bold;
+}
+
+/* Contact Section */
+.contactus {
+  padding: 60px 20px;
+  text-align: center;
+  background: #f9fcfe;
+}
+
+.contactus h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #0ea5a6;
+  margin-bottom: 0.5rem;
+}
+
+.contactus .subtitle {
+  font-size: 1rem;
+  color: #666;
+  margin-bottom: 2rem;
+}
+
+.contact-grid {
+  display: flex;
+  justify-content: center;
+  gap: 60px;
+  flex-wrap: wrap;
+}
+
+.contact-item {
+  flex: 1 1 250px;
+  max-width: 300px;
+}
+
+.contact-item i {
+  font-size: 2rem;
+  color: #6c7074;
+  margin-bottom: 10px;
+}
+
+.contact-item h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #444;
+  letter-spacing: 1px;
+  margin-bottom: 0.5rem;
+}
+
+.contact-item p {
+  font-size: 0.95rem;
+  color: #333;
+}
+
 /* Footer */
 .footer {
     background: #f8f9fa;
@@ -377,8 +488,11 @@ body {
 }
 
 .login-submit {
-    width: 100%;
-    margin-bottom: 1rem;
+    width: auto;
+    padding: 10px 20px;
+    font-size: 1rem;
+    display: block;
+    margin: 1rem auto;
 }
 
 .modal-footer {
@@ -418,7 +532,7 @@ body {
     }
     
     .nav-right {
-        gap: 1rem;
+        margin-right: 20px;
     }
     
     .logo-text {

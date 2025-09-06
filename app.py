@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template,redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import datetime
@@ -3169,8 +3169,9 @@ def fhir_eligibility():
         "disposition": "Step therapy required before approval"
     })
 
-
-# ------------------------------
+@app.route("/logout")
+def logout():
+    return redirect(url_for('home'))# ------------------------------
 # SocketIO event handlers
 # ------------------------------
 @socketio.on('connect')

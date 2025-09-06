@@ -14,7 +14,7 @@ body {
 
 /* Header */
 .header {
-    background: linear-gradient(135deg, #0aa5a4, #0c7c91); /* exact teal gradient */
+    background: linear-gradient(135deg, #a9dcdc, #4ba8b9); /* exact teal gradient */
     padding: 0.5rem 1.5rem; /* slim height */
     display: flex;
     justify-content: space-between;
@@ -22,7 +22,6 @@ body {
     border: none;
     box-shadow: none;
 }
-
 /* Header content wrapper */
 .header-content {
     display: flex;
@@ -99,8 +98,8 @@ body {
 /* Profile button */
 .profile-btn {
     background: rgba(255, 255, 255, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    color: #fff;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    color: #000000;
     padding: 0.5rem 1rem;
     border-radius: 9999px;
     font-size: 0.9rem;
@@ -110,12 +109,22 @@ body {
 }
 
 
+.profile-btn:hover {
+    border: 2px solid #000000;
+    box-shadow: 0 0 0 6px rgba(14, 165, 166, 0.15); /* popup glow */
+}
+
+.profile-btn:hover i {
+    color: #000000;             /* icon color changes on hover */
+}
+
+
 /* Navigation Tabs */
 .nav-tabs {
     background: white;
     border-bottom: 1px solid #e2e8f0;
     position: sticky;
-    top: 81px;
+    /* top: 81px; */
     z-index: 99;
 }
 
@@ -447,89 +456,6 @@ body {
 
 .action-btn.warning:hover {
     background: #d97706;
-}
-
-.approve-btn {
-    background: #10b981;
-    color: white;
-}
-
-.approve-btn:hover {
-    background: #059669;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
-}
-
-.deny-btn {
-    background: #ef4444;
-    color: white;
-}
-
-.deny-btn:hover {
-    background: #dc2626;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
-}
-
-.view-btn {
-    background: #6b7280;
-    color: white;
-}
-
-.view-btn:hover {
-    background: #4b5563;
-}
-
-.status-pending {
-    background: #f59e0b;
-    color: #212529;
-}
-
-.status-reviewing {
-    background: #3b82f6;
-    color: white;
-}
-
-.appeal-reason, .documentation-text, .admin-notes {
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.detail-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 0.75rem;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.detail-row:last-child {
-    border-bottom: none;
-}
-
-.detail-row label {
-    font-weight: 600;
-    color: #374151;
-    min-width: 120px;
-}
-
-.detail-row span, .detail-row div {
-    flex: 1;
-    text-align: right;
-}
-
-.reason-text, .documentation-text, .admin-notes {
-    text-align: left !important;
-    white-space: pre-wrap;
-    word-break: break-word;
-    max-width: none;
-    background: #f9fafb;
-    padding: 0.5rem;
-    border-radius: 4px;
-    border: 1px solid #e5e7eb;
 }
 
 .action-btn.rule-engine-btn {

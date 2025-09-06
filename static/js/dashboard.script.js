@@ -30,9 +30,11 @@ function showLoginModal(role) {
         modalTitle.textContent = 'Insurance Admin Login';
         modalSubtitle.textContent = 'Access your administrative dashboard';
         loginButtonText.textContent = 'Login to Admin Dashboard';
-        // Hide create account option for admin (only one admin allowed)
-        newUserText.style.display = 'none';
-        createAccountBtn.style.display = 'none';
+        newUserText.textContent = 'New admin?';
+        createAccountBtn.textContent = 'Create New Account';
+        // create account option for admin (only one admin allowed)
+        newUserText.style.display = 'block';
+        createAccountBtn.style.display = 'inline-block';
     }
     
     // Reset form

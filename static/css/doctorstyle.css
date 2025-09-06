@@ -14,7 +14,7 @@ body {
 }
 /* Header */
 .header {
-    background: linear-gradient(135deg, #0aa5a4, #0c7c91); /* exact teal gradient */
+    background: linear-gradient(135deg, #a9dcdc, #4ba8b9); /* exact teal gradient */
     padding: 0.5rem 1.5rem; /* slim height */
     display: flex;
     justify-content: space-between;
@@ -99,8 +99,8 @@ body {
 /* Profile button */
 .profile-btn {
     background: rgba(255, 255, 255, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    color: #fff;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    color: #000000;
     padding: 0.5rem 1rem;
     border-radius: 9999px;
     font-size: 0.9rem;
@@ -108,6 +108,17 @@ body {
     align-items: center;
     cursor: pointer;
 }
+
+
+.profile-btn:hover {
+    border: 2px solid #000000;
+    box-shadow: 0 0 0 6px rgba(14, 165, 166, 0.15); /* popup glow */
+}
+
+.profile-btn:hover i {
+    color: #000000;             /* icon color changes on hover */
+}
+
 
 
 /* Navigation Tabs */
@@ -548,28 +559,6 @@ body {
     color: white;
 }
 
-.appeal-btn {
-    background: #ffc107;
-    color: #212529;
-    font-weight: 600;
-}
-
-.appeal-btn:hover {
-    background: #e0a800;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3);
-}
-
-.status-pending {
-    background: #ffc107;
-    color: #212529;
-}
-
-.status-reviewing {
-    background: #17a2b8;
-    color: white;
-}
-
 .file-appeal-btn:hover {
     background: #c82333;
 }
@@ -884,6 +873,48 @@ body {
 .profile-field span {
     color: #666;
 }
+
+.profile-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-menu {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 8px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  min-width: 160px;
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10000; /* Ensure it stays above header */
+}
+
+.dropdown-menu button {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  background: none;
+  text-align: left;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dropdown-menu button:hover {
+  background: #f0f0f0;
+}
+
+
+
+
+
+
 
 .request-info {
     background: #f8f9fa;
