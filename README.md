@@ -4,17 +4,17 @@
 This project automates prior authorization (PA) workflows by combining rule-based checks, machine learning models, and LLM-powered decision support. It helps providers reduce administrative burden, minimize delays, and improve care outcomes.
 
 📂 Repository Structure
-├── static/                     # Frontend static assets (CSS, JS, images)
-├── templates/                  # HTML frontend templates
-├── app.py                      # Main Flask backend
-├── appeal_risk_model.pkl_first # ML appeal risk model (v1)
+├── static/                    
+├── templates/                 
+├── app.py                      
+├── appeal_risk_model.pkl_first 
 ├── appeal_risk_model.pkl_second
 ├── appeal_risk_model.pkl_third
-├── xgb_appeal_model.pkl        # XGBoost appeal model
-├── rules_1000.json             # Rule engine JSON (payer policies)
-├── requirements.txt            # Python dependencies
-├── runtime.txt                 # Runtime environment (for deployment)
-├── README.md                   # Project documentation
+├── xgb_appeal_model.pkl        
+├── rules_1000.json             
+├── requirements.txt            
+├── runtime.txt                 
+├── README.md                   
 
 ⚙️ Setup Instructions
 1️⃣ Create Virtual Environment
